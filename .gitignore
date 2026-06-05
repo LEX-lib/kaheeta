@@ -443,3 +443,7 @@ components.d.ts
 # Vitest / TS build info
 node_modules/.tmp/
 *.tsbuildinfo
+
+# Local dev secrets / config (credentials, TLS certs) — never commit
+local.jsonc
+*.pem
