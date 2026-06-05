@@ -6,7 +6,12 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      name: "home",
+      name: "landing",
+      component: () => import("@/components/landing/LandingPage.vue"),
+    },
+    {
+      path: "/wallet",
+      name: "wallet",
       component: () => import("@/components/wallecx/WallecxApp.vue"),
       meta: { requiresAuth: true },
     },

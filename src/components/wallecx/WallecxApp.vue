@@ -79,7 +79,7 @@ onMounted(async () => {
     toast.info(evictionMessage);
     await router.push({
       name: "login",
-      query: { redirect: "/" },
+      query: { redirect: "/wallet" },
     });
   }
 

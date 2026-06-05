@@ -21,7 +21,7 @@ const login = async ({ valid, values }: FormSubmitEvent) => {
 
     // Determine safe redirect target
     const redirectRaw = route.query.redirect;
-    let target = "/";
+    let target = "/wallet";
     if (
       typeof redirectRaw === "string" &&
       redirectRaw.startsWith("/") &&
