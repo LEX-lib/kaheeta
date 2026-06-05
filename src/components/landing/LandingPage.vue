@@ -1,18 +1,65 @@
 <script setup lang="ts">
-// delveen landing page — public route "/". Login entry points route into the Kaheeta app at /wallet.
+import { useTheme } from "@/composables/useTheme";
+
+const { theme, toggle } = useTheme();
 const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
-const WALLET = { name: "wallet" } as const;
+
+const features = [
+  {
+    icon: "mdi:card-account-details-outline",
+    title: "IDs",
+    desc: "Keep your identification cards within reach, always in your pocket.",
+  },
+  {
+    icon: "mdi:card-multiple-outline",
+    title: "Membership Cards",
+    desc: "Loyalty cards, gym memberships, library cards — all in one place.",
+  },
+  {
+    icon: "mdi:needle",
+    title: "Vaccination Records",
+    desc: "Store vaccination history with dates, brand, and dose details.",
+  },
+  {
+    icon: "mdi:cart-outline",
+    title: "Shopping Lists",
+    desc: "Build and check off lists while you shop, then archive them.",
+  },
+  {
+    icon: "mdi:receipt-text-outline",
+    title: "Receipts",
+    desc: "Photograph and file receipts, linked to your expense records.",
+  },
+  {
+    icon: "mdi:credit-card-outline",
+    title: "Cards",
+    desc: "Track debit and credit cards with balance and spend awareness.",
+  },
+] as const;
 </script>
 
 <template>
-  <div class="delveen" id="top">
+  <div class="kaheeta-page" id="top">
     <!-- NAV -->
     <nav class="nav">
       <div class="container nav-inner">
-        <a href="#top" class="brand-mark">delve<span class="en">en</span></a>
-        <div class="nav-links">
-          <a href="#approach">Approach</a>
-          <a href="#work">Work</a>
+        <a href="#top" class="brand-mark">
+          <img src="/kaheeta-logo.svg" alt="" width="28" height="28" />
+          <span>Kaheeta</span>
+        </a>
+        <div class="nav-right">
+          <button
+            class="icon-btn"
+            :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            @click="toggle"
+          >
+            <iconify-icon
+              :icon="theme === 'dark' ? 'mdi:weather-sunny' : 'mdi:weather-night'"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            ></iconify-icon>
+          </button>
           <RouterLink :to="LOGIN" class="nav-cta">Log in</RouterLink>
         </div>
       </div>
@@ -22,102 +69,44 @@ const WALLET = { name: "wallet" } as const;
     <header class="hero">
       <div class="container hero-inner">
         <div class="accent-rule"></div>
-        <h1 class="wordmark">delve<span class="en">en</span></h1>
-        <p class="eyebrow">Curious · Optimized · Crafted</p>
+        <p class="eyebrow">Digital Wallet · Filipino-inspired · Beta</p>
+        <h1 class="hero-title">Your wallet,<br /><span class="em">digitized.</span></h1>
         <p class="hero-desc">
-          A studio that <strong>digs deep</strong> — building lean, purposeful mini-apps driven by
-          curiosity and refined by craft.
+          Kaheeta is the digital version of the everyday Filipino wallet — carrying your IDs,
+          membership cards, vaccination records, receipts, and more, always at your fingertips.
         </p>
         <div class="cta-row">
-          <a href="#work" class="btn btn-primary">See the apps <span class="arrow">→</span></a>
-          <a href="#approach" class="btn btn-ghost">How we work</a>
+          <RouterLink :to="LOGIN" class="btn btn-primary"
+            >Log in <span class="arrow">→</span></RouterLink
+          >
+          <span class="beta-note">Sign-up is invite-only (beta)</span>
         </div>
       </div>
     </header>
 
-    <!-- APPROACH / PRINCIPLES -->
-    <section class="principles section-pad" id="approach">
+    <!-- FEATURES -->
+    <section class="features section-pad" id="features">
       <div class="container">
-        <p class="section-label">The approach</p>
-        <h2 class="section-title">Three words we hold every build to.</h2>
-        <div class="principle-grid">
-          <div class="principle">
-            <div class="num">01</div>
-            <h3>Curious</h3>
-            <p>
-              Every app starts with a real itch — a question worth answering. We dig into the
-              problem before we write a line.
-            </p>
-          </div>
-          <div class="principle">
-            <div class="num">02</div>
-            <h3>Optimized</h3>
-            <p>
-              Lean by default. Fast to load, light to run, and free of the bloat that turns simple
-              tools into chores.
-            </p>
-          </div>
-          <div class="principle">
-            <div class="num">03</div>
-            <h3>Crafted</h3>
-            <p>
-              Details are the product. Considered typography, motion, and flow — polished until it
-              feels effortless.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- WORK / APPS -->
-    <section class="work section-pad" id="work">
-      <div class="container">
-        <p class="section-label">What we build</p>
-        <h2 class="section-title">Small apps, sharply made.</h2>
-        <p class="section-intro">
-          Focused tools that do one thing exceptionally well — installable, offline-ready, and built
-          to live on your home screen.
-        </p>
-
-        <div class="app-grid">
-          <article class="app-card featured">
-            <span class="app-badge">● Live</span>
-            <div class="app-icon">🪪</div>
-            <h3>Kaheeta</h3>
-            <p>
-              Your personal vault for vaccination records, membership cards, and everyday expenses —
-              barcodes, receipts, and reports, all in your pocket.
-            </p>
-            <div class="app-tags">
-              <span class="tag">PWA</span>
-              <span class="tag">Vaccinations</span>
-              <span class="tag">Memberships</span>
-              <span class="tag">Expenses</span>
+        <p class="section-label">What's in your wallet</p>
+        <h2 class="section-title">Everything you carry,<br />always with you.</h2>
+        <div class="feature-grid">
+          <div v-for="f in features" :key="f.title" class="feature-card">
+            <div class="feature-icon">
+              <iconify-icon :icon="f.icon" width="24" height="24" aria-hidden="true"></iconify-icon>
             </div>
-            <RouterLink :to="WALLET" class="app-link"
-              >Launch Kaheeta <span class="arrow">→</span></RouterLink
-            >
-          </article>
-
-          <article class="app-card soon-card">
-            <span class="app-badge soon">In the works</span>
-            <div class="app-icon">✦</div>
-            <h3>Next up</h3>
-            <p>The next mini-app is already brewing. Same principles, new itch worth scratching.</p>
-            <a href="#contact" class="app-link">Get notified <span class="arrow">→</span></a>
-          </article>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.desc }}</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- LOGIN CTA -->
-    <section class="cta-strip" id="contact">
+    <!-- CTA STRIP -->
+    <section class="cta-strip">
       <div class="container cta-box">
-        <p class="section-label" style="text-align: center">Already using Kaheeta?</p>
+        <p class="section-label" style="text-align: center">Already have access?</p>
         <h2>Pick up where you left off.</h2>
-        <p>
-          Log in to open your vault — cards, records, and expenses, right where you left them.
-        </p>
+        <p>Log in to open your wallet — cards, records, and expenses, right where you left them.</p>
         <div class="cta-row" style="justify-content: center">
           <RouterLink :to="LOGIN" class="btn btn-primary"
             >Log in <span class="arrow">→</span></RouterLink
@@ -130,21 +119,24 @@ const WALLET = { name: "wallet" } as const;
     <!-- FOOTER -->
     <footer>
       <div class="container footer-inner">
-        <div class="footer-brand">delve<span class="en">en</span></div>
+        <div class="footer-brand">
+          <img src="/kaheeta-logo.svg" alt="" width="22" height="22" />
+          <span>Kaheeta</span>
+        </div>
         <div class="footer-links">
-          <a href="#approach">Approach</a>
-          <a href="#work">Work</a>
           <RouterLink :to="LOGIN">Log in</RouterLink>
           <a href="mailto:hello@delveen.dev">Contact</a>
         </div>
-        <div class="footer-meta">© 2026 delveen · Curious · Optimized · Crafted</div>
+        <div class="footer-meta">
+          A <a href="https://delveen.dev" class="delveen-link">delveen</a> product · © 2026
+        </div>
       </div>
     </footer>
   </div>
 </template>
 
 <style scoped>
-.delveen {
+.kaheeta-page {
   --navy: #002244;
   --navy-deep: #001327;
   --navy-surface: #0a2c52;
@@ -170,9 +162,9 @@ const WALLET = { name: "wallet" } as const;
   overflow-x: hidden;
 }
 
-.delveen *,
-.delveen *::before,
-.delveen *::after {
+.kaheeta-page *,
+.kaheeta-page *::before,
+.kaheeta-page *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -182,7 +174,7 @@ const WALLET = { name: "wallet" } as const;
   scroll-behavior: smooth;
 }
 
-.delveen a {
+.kaheeta-page a {
   color: inherit;
   text-decoration: none;
 }
@@ -210,44 +202,49 @@ const WALLET = { name: "wallet" } as const;
   height: 68px;
 }
 .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
   font-weight: 800;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   letter-spacing: -0.02em;
   color: var(--white);
 }
-.brand-mark .en {
-  color: var(--amber);
-}
-.nav-links {
+.nav-right {
   display: flex;
   align-items: center;
-  gap: 2rem;
-  font-size: 0.92rem;
-  font-weight: 500;
+  gap: 0.75rem;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
   color: var(--muted);
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
 }
-.nav-links a {
-  transition: color 0.18s ease;
-}
-.nav-links a:hover {
+.icon-btn:hover {
   color: var(--white);
+  background: rgba(255, 255, 255, 0.06);
 }
 .nav-cta {
   padding: 0.5rem 1.1rem;
   border: 1px solid rgba(232, 152, 32, 0.4);
   border-radius: 999px;
   color: var(--amber-soft) !important;
+  font-size: 0.92rem;
+  font-weight: 500;
   transition: all 0.18s ease;
 }
 .nav-cta:hover {
   background: var(--amber);
   border-color: var(--amber);
   color: var(--navy) !important;
-}
-@media (max-width: 640px) {
-  .nav-links a:not(.nav-cta) {
-    display: none;
-  }
 }
 
 /* Hero */
@@ -279,43 +276,40 @@ const WALLET = { name: "wallet" } as const;
   height: 5px;
   border-radius: 999px;
   background: var(--amber);
-  margin-bottom: 2.25rem;
+  margin-bottom: 2rem;
 }
-.wordmark {
+.eyebrow {
+  font-size: clamp(0.78rem, 1.6vw, 0.92rem);
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+.hero-title {
   font-weight: 900;
-  font-size: clamp(3.75rem, 13vw, 7.5rem);
-  line-height: 0.92;
+  font-size: clamp(3.25rem, 11vw, 6.5rem);
+  line-height: 0.94;
   letter-spacing: -0.04em;
   color: var(--white);
   margin-bottom: 1.75rem;
 }
-.wordmark .en {
+.hero-title .em {
   color: var(--amber);
 }
-.eyebrow {
-  font-size: clamp(0.8rem, 1.6vw, 0.95rem);
-  font-weight: 600;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 1.75rem;
-}
 .hero-desc {
-  font-size: clamp(1.1rem, 2.2vw, 1.45rem);
-  line-height: 1.5;
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  line-height: 1.55;
   color: var(--text);
-  max-width: 36ch;
+  max-width: 42ch;
   margin-bottom: 2.5rem;
   font-weight: 400;
-}
-.hero-desc strong {
-  color: var(--white);
-  font-weight: 600;
 }
 .cta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem;
+  align-items: center;
+  gap: 1rem;
 }
 .btn {
   display: inline-flex;
@@ -328,6 +322,7 @@ const WALLET = { name: "wallet" } as const;
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
+  text-decoration: none;
 }
 .btn-primary {
   background: var(--amber);
@@ -352,6 +347,14 @@ const WALLET = { name: "wallet" } as const;
 .btn:hover .arrow {
   transform: translateX(3px);
 }
+.beta-note {
+  font-size: 0.88rem;
+  color: var(--muted);
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  white-space: nowrap;
+}
 
 /* Section base */
 .section-pad {
@@ -370,30 +373,23 @@ const WALLET = { name: "wallet" } as const;
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--white);
-  line-height: 1.1;
-  max-width: 18ch;
-}
-.section-intro {
-  margin-top: 1.1rem;
-  color: var(--muted);
-  font-size: 1.08rem;
-  max-width: 52ch;
+  line-height: 1.15;
 }
 
-/* Principles */
-.principles {
+/* Features */
+.features {
   background: var(--navy-deep);
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
-.principle-grid {
+.feature-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  gap: 1.25rem;
   margin-top: 3rem;
 }
-.principle {
-  padding: 2rem 1.75rem;
+.feature-card {
+  padding: 1.75rem;
   border-radius: 18px;
   background: linear-gradient(180deg, var(--navy-surface), rgba(10, 44, 82, 0.4));
   border: 1px solid var(--line);
@@ -401,144 +397,40 @@ const WALLET = { name: "wallet" } as const;
     transform 0.22s ease,
     border-color 0.22s ease;
 }
-.principle:hover {
+.feature-card:hover {
   transform: translateY(-4px);
   border-color: rgba(232, 152, 32, 0.4);
 }
-.principle .num {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--amber);
-  letter-spacing: 0.1em;
-  margin-bottom: 1rem;
-}
-.principle h3 {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--white);
-  margin-bottom: 0.6rem;
-  letter-spacing: -0.01em;
-}
-.principle p {
-  color: var(--muted);
-  font-size: 0.98rem;
-}
-@media (max-width: 800px) {
-  .principle-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Work / apps */
-.work {
-  background: radial-gradient(700px 400px at 90% 0%, rgba(232, 152, 32, 0.08), transparent 60%),
-    var(--navy);
-}
-.app-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 1.5rem;
-  margin-top: 3rem;
-}
-.app-card {
-  position: relative;
-  border-radius: 22px;
-  border: 1px solid var(--line);
-  background: linear-gradient(155deg, var(--navy-surface-2), var(--navy-surface) 55%);
-  padding: 2.25rem;
-  overflow: hidden;
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease;
-  display: flex;
-  flex-direction: column;
-}
-.app-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(232, 152, 32, 0.45);
-}
-.app-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  align-self: flex-start;
-  padding: 0.32rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: rgba(232, 152, 32, 0.14);
-  color: var(--amber-light);
-  border: 1px solid rgba(232, 152, 32, 0.3);
-  margin-bottom: 1.4rem;
-}
-.app-badge.soon {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--muted);
-  border-color: var(--line);
-}
-.app-icon {
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  font-size: 1.6rem;
   background: rgba(232, 152, 32, 0.12);
   border: 1px solid rgba(232, 152, 32, 0.25);
-  margin-bottom: 1.4rem;
-}
-.app-card h3 {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--white);
-  letter-spacing: -0.02em;
-  margin-bottom: 0.6rem;
-}
-.app-card p {
-  color: var(--muted);
-  font-size: 1rem;
-  margin-bottom: 1.6rem;
-  max-width: 42ch;
-}
-.app-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: auto;
-  margin-bottom: 1.5rem;
-}
-.tag {
-  font-size: 0.8rem;
-  color: var(--text);
-  padding: 0.3rem 0.7rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--line);
-}
-.app-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-weight: 600;
   color: var(--amber);
-  font-size: 0.98rem;
+  margin-bottom: 1.1rem;
 }
-.app-link .arrow {
-  transition: transform 0.2s ease;
+.feature-card h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 0.45rem;
+  letter-spacing: -0.01em;
 }
-.app-card:hover .app-link .arrow {
-  transform: translateX(4px);
+.feature-card p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
-.app-card.soon-card {
-  background: linear-gradient(155deg, rgba(14, 51, 96, 0.5), rgba(10, 44, 82, 0.3));
+@media (max-width: 860px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
-.app-card.soon-card h3 {
-  color: var(--text);
-}
-@media (max-width: 800px) {
-  .app-grid {
+@media (max-width: 520px) {
+  .feature-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -546,7 +438,6 @@ const WALLET = { name: "wallet" } as const;
 /* CTA strip */
 .cta-strip {
   background: var(--navy-deep);
-  border-top: 1px solid var(--line);
 }
 .cta-box {
   text-align: center;
@@ -561,7 +452,7 @@ const WALLET = { name: "wallet" } as const;
 }
 .cta-box p {
   color: var(--muted);
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   max-width: 46ch;
   margin: 0 auto 2.25rem;
 }
@@ -580,16 +471,23 @@ footer {
   gap: 1rem;
 }
 .footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--white);
-}
-.footer-brand .en {
-  color: var(--amber);
 }
 .footer-meta {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+}
+.delveen-link {
+  color: var(--amber);
+  text-decoration: none;
+}
+.delveen-link:hover {
+  text-decoration: underline;
 }
 .footer-links {
   display: flex;

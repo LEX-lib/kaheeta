@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <rect width="40" height="40" rx="10" fill="#002244"/>
+  <!-- Wallet body -->
+  <rect x="6" y="13" width="28" height="18" rx="3.5" fill="#E89820"/>
+  <!-- Top fold -->
+  <rect x="6" y="13" width="28" height="6" rx="3.5" fill="#c9841a"/>
+  <!-- Card pocket -->
+  <rect x="22" y="16" width="9" height="9" rx="2" fill="#002244" opacity="0.45"/>
+  <!-- Card lines (left side) -->
+  <rect x="8" y="17.5" width="11" height="2" rx="1" fill="#002244" opacity="0.3"/>
+  <rect x="8" y="22.5" width="11" height="2" rx="1" fill="#002244" opacity="0.3"/>
+</svg>
