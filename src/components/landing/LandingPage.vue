@@ -136,25 +136,42 @@ const features = [
 </template>
 
 <style scoped>
+/* ─── Light-mode defaults ─────────────────────────────────────────────────── */
 .kaheeta-page {
-  --navy: #002244;
-  --navy-deep: #001327;
-  --navy-surface: #0a2c52;
-  --navy-surface-2: #0e3360;
+  /* Invariant brand tokens */
   --amber: #e89820;
   --amber-light: #f5b450;
   --amber-soft: #fdf3dc;
-  --white: #ffffff;
-  --text: #d7e2f0;
-  --muted: #8095af;
-  --line: rgba(255, 255, 255, 0.08);
+  --navy: #002244;        /* always used for contrast on amber backgrounds */
+
+  /* Themeable tokens — light defaults */
+  --pg-bg: #f5f7fa;
+  --pg-surface: #ffffff;
+  --pg-surface-2: #eef1f6;
+  --pg-heading: #0d1117;
+  --pg-text: #3d4a5c;
+  --pg-muted: #6b7280;
+  --pg-line: rgba(0, 34, 68, 0.1);
+
+  /* Component-specific tokens — light defaults */
+  --nav-bg: rgba(248, 250, 252, 0.88);
+  --hero-base: #ffffff;
+  --hero-overlay: rgba(0, 34, 68, 0.03);
+  --dot-color: rgba(0, 0, 0, 0.025);
+  --card-end: rgba(240, 244, 248, 0.5);
+  --ghost-border: rgba(0, 34, 68, 0.2);
+  --ghost-hover-bg: rgba(0, 34, 68, 0.04);
+  --ghost-hover-border: rgba(0, 34, 68, 0.35);
+  --icon-hover-bg: rgba(0, 34, 68, 0.05);
+  --nav-cta-color: var(--amber);
+
   --maxw: 1120px;
   --font:
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   font-family: var(--font);
-  color: var(--text);
-  background: var(--navy-deep);
+  color: var(--pg-text);
+  background: var(--pg-bg);
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -162,6 +179,29 @@ const features = [
   overflow-x: hidden;
 }
 
+/* ─── Dark-mode overrides (Lexarium pattern) ──────────────────────────────── */
+:global(.my-app-dark .kaheeta-page) {
+  --pg-bg: #001327;
+  --pg-surface: #0a2c52;
+  --pg-surface-2: #0e3360;
+  --pg-heading: #ffffff;
+  --pg-text: #d7e2f0;
+  --pg-muted: #8095af;
+  --pg-line: rgba(255, 255, 255, 0.08);
+
+  --nav-bg: rgba(0, 19, 39, 0.72);
+  --hero-base: #002244;
+  --hero-overlay: rgba(13, 51, 96, 0.9);
+  --dot-color: rgba(255, 255, 255, 0.035);
+  --card-end: rgba(10, 44, 82, 0.4);
+  --ghost-border: rgba(255, 255, 255, 0.18);
+  --ghost-hover-bg: rgba(255, 255, 255, 0.04);
+  --ghost-hover-border: rgba(255, 255, 255, 0.45);
+  --icon-hover-bg: rgba(255, 255, 255, 0.06);
+  --nav-cta-color: var(--amber-soft);
+}
+
+/* ─── Base reset ──────────────────────────────────────────────────────────── */
 .kaheeta-page *,
 .kaheeta-page *::before,
 .kaheeta-page *::after {
@@ -191,9 +231,10 @@ const features = [
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(0, 19, 39, 0.72);
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--pg-line);
+  transition: background 0.3s ease;
 }
 .nav-inner {
   display: flex;
@@ -208,7 +249,7 @@ const features = [
   font-weight: 800;
   font-size: 1.2rem;
   letter-spacing: -0.02em;
-  color: var(--white);
+  color: var(--pg-heading);
 }
 .nav-right {
   display: flex;
@@ -224,19 +265,19 @@ const features = [
   border: none;
   background: transparent;
   border-radius: 8px;
-  color: var(--muted);
+  color: var(--pg-muted);
   cursor: pointer;
   transition: color 0.18s ease, background 0.18s ease;
 }
 .icon-btn:hover {
-  color: var(--white);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--pg-heading);
+  background: var(--icon-hover-bg);
 }
 .nav-cta {
   padding: 0.5rem 1.1rem;
   border: 1px solid rgba(232, 152, 32, 0.4);
   border-radius: 999px;
-  color: var(--amber-soft) !important;
+  color: var(--nav-cta-color) !important;
   font-size: 0.92rem;
   font-weight: 500;
   transition: all 0.18s ease;
@@ -251,15 +292,17 @@ const features = [
 .hero {
   position: relative;
   background:
-    radial-gradient(900px 500px at 12% -10%, rgba(232, 152, 32, 0.16), transparent 60%),
-    radial-gradient(800px 600px at 100% 110%, rgba(13, 51, 96, 0.9), transparent 55%), var(--navy);
+    radial-gradient(900px 500px at 12% -10%, rgba(232, 152, 32, 0.14), transparent 60%),
+    radial-gradient(800px 600px at 100% 110%, var(--hero-overlay), transparent 55%),
+    var(--hero-base);
   overflow: hidden;
+  transition: background 0.3s ease;
 }
 .hero::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
   background-size: 26px 26px;
   mask-image: linear-gradient(to bottom, black, transparent 75%);
   -webkit-mask-image: linear-gradient(to bottom, black, transparent 75%);
@@ -283,7 +326,7 @@ const features = [
   font-weight: 600;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--pg-muted);
   margin-bottom: 1.5rem;
 }
 .hero-title {
@@ -291,7 +334,7 @@ const features = [
   font-size: clamp(3.25rem, 11vw, 6.5rem);
   line-height: 0.94;
   letter-spacing: -0.04em;
-  color: var(--white);
+  color: var(--pg-heading);
   margin-bottom: 1.75rem;
 }
 .hero-title .em {
@@ -300,7 +343,7 @@ const features = [
 .hero-desc {
   font-size: clamp(1.05rem, 2.2vw, 1.35rem);
   line-height: 1.55;
-  color: var(--text);
+  color: var(--pg-text);
   max-width: 42ch;
   margin-bottom: 2.5rem;
   font-weight: 400;
@@ -334,12 +377,12 @@ const features = [
   transform: translateY(-2px);
 }
 .btn-ghost {
-  border-color: rgba(255, 255, 255, 0.18);
-  color: var(--white);
+  border-color: var(--ghost-border);
+  color: var(--pg-heading);
 }
 .btn-ghost:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--ghost-hover-border);
+  background: var(--ghost-hover-bg);
 }
 .btn .arrow {
   transition: transform 0.2s ease;
@@ -349,9 +392,9 @@ const features = [
 }
 .beta-note {
   font-size: 0.88rem;
-  color: var(--muted);
+  color: var(--pg-muted);
   padding: 0.45rem 1rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--pg-line);
   border-radius: 999px;
   white-space: nowrap;
 }
@@ -372,15 +415,15 @@ const features = [
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   font-weight: 800;
   letter-spacing: -0.025em;
-  color: var(--white);
+  color: var(--pg-heading);
   line-height: 1.15;
 }
 
 /* Features */
 .features {
-  background: var(--navy-deep);
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  background: var(--pg-bg);
+  border-top: 1px solid var(--pg-line);
+  border-bottom: 1px solid var(--pg-line);
 }
 .feature-grid {
   display: grid;
@@ -391,8 +434,8 @@ const features = [
 .feature-card {
   padding: 1.75rem;
   border-radius: 18px;
-  background: linear-gradient(180deg, var(--navy-surface), rgba(10, 44, 82, 0.4));
-  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--pg-surface), var(--card-end));
+  border: 1px solid var(--pg-line);
   transition:
     transform 0.22s ease,
     border-color 0.22s ease;
@@ -415,12 +458,12 @@ const features = [
 .feature-card h3 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--white);
+  color: var(--pg-heading);
   margin-bottom: 0.45rem;
   letter-spacing: -0.01em;
 }
 .feature-card p {
-  color: var(--muted);
+  color: var(--pg-muted);
   font-size: 0.95rem;
   line-height: 1.55;
 }
@@ -437,7 +480,8 @@ const features = [
 
 /* CTA strip */
 .cta-strip {
-  background: var(--navy-deep);
+  background: var(--pg-surface);
+  border-top: 1px solid var(--pg-line);
 }
 .cta-box {
   text-align: center;
@@ -446,12 +490,12 @@ const features = [
 .cta-box h2 {
   font-size: clamp(1.9rem, 4.5vw, 3rem);
   font-weight: 800;
-  color: var(--white);
+  color: var(--pg-heading);
   letter-spacing: -0.03em;
   margin-bottom: 1rem;
 }
 .cta-box p {
-  color: var(--muted);
+  color: var(--pg-muted);
   font-size: 1.1rem;
   max-width: 46ch;
   margin: 0 auto 2.25rem;
@@ -459,8 +503,8 @@ const features = [
 
 /* Footer */
 footer {
-  background: var(--navy-deep);
-  border-top: 1px solid var(--line);
+  background: var(--pg-bg);
+  border-top: 1px solid var(--pg-line);
   padding: 2.5rem 0;
 }
 .footer-inner {
@@ -476,10 +520,10 @@ footer {
   gap: 0.5rem;
   font-weight: 800;
   font-size: 1rem;
-  color: var(--white);
+  color: var(--pg-heading);
 }
 .footer-meta {
-  color: var(--muted);
+  color: var(--pg-muted);
   font-size: 0.88rem;
 }
 .delveen-link {
@@ -493,9 +537,9 @@ footer {
   display: flex;
   gap: 1.5rem;
   font-size: 0.92rem;
-  color: var(--muted);
+  color: var(--pg-muted);
 }
 .footer-links a:hover {
-  color: var(--white);
+  color: var(--pg-heading);
 }
 </style>
