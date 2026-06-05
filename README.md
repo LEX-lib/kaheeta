@@ -1,54 +1,43 @@
-# kaheeta
+# Kaheeta
 
-This template should help get you started developing with Vue 3 in Vite.
+A digital wallet app under the Delveen brand. Kaheeta is the playful Ilonggo word for "wallet" (from *kahita*), and this app is the digital version of a traditional Filipino wallet—holding IDs, membership cards, vaccination records, shopping lists, receipts, debit and credit cards, and more.
+
+Originally developed as a feature in the Lexarium portfolio, Kaheeta is now a standalone progressive web app (PWA).
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js `^20.19.0 || >=22.12.0`
+- Environment variables: set `VITE_API_BASE_URL` in `.env*` (points to PocketBase backend)
+- Optional: `local.jsonc` for dev login credentials (gitignored)
+
+### Project Setup
+
+```sh
+npm install
+npm run dev          # Vite dev server (http://localhost:5173)
+npm run build        # Production build + PWA manifest
+npm run type-check   # TypeScript check
+npm run test:unit    # Run tests (watch mode)
+npm run lint         # Lint and format fixes
+```
+
+## Architecture
+
+This is **two apps in one SPA**, sharing a Vue Router instance:
+
+- **`/`** — Delveen landing page (public marketing)
+- **`/wallet`** — Kaheeta wallet app (requires authentication)
+- **`/login`** — Login page
+
+See `CLAUDE.md` for full architecture details, PocketBase data layer conventions, and styling guidelines.
 
 ## Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
 
-## Recommended Browser Setup
+## Browser DevTools
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Run Unit Tests with [Vitest](https://vitest.dev/)
-
-```sh
-npm run test:unit
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+- **Chrome/Edge**: [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
+- **Firefox**: [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)

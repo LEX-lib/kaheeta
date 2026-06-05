@@ -1,6 +1,7 @@
 {
   "name": "kaheeta",
   "version": "0.0.0",
+  "description": "Digital wallet app under the Delveen brand — storing IDs, membership cards, vaccination records, receipts, and more",
   "private": true,
   "type": "module",
   "scripts": {
