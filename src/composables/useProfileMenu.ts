@@ -1,17 +1,17 @@
 import { computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import type { MenuItem } from "primevue/menuitem";
-import { useTheme } from "@/composables/useTheme";
 import { useAuthStore } from "@/stores/auth";
 
 /**
- * Shared logged-in profile menu used by both the landing nav and the in-app
- * KaheetaNavBar so the two stay in sync. Exposes the display identity plus a
- * PrimeVue MenuItem[] (My Wallet, theme toggle, Log out).
+ * Shared logged-in profile menu used by the app-wide KaheetaNavBar. Exposes the
+ * display identity plus a PrimeVue MenuItem[] (My Wallet, Log out). The theme
+ * toggle lives in the navbar itself (always visible), not in this menu.
+ * "My Wallet" is omitted when already on the wallet page.
  */
 export function useProfileMenu() {
   const router = useRouter();
-  const { theme, toggle } = useTheme();
+  const route = useRoute();
   const auth = useAuthStore();
 
   const displayName = computed<string>(
@@ -28,22 +28,23 @@ export function useProfileMenu() {
     await router.push({ name: "login" });
   }
 
-  const profileMenuItems = computed<MenuItem[]>(() => [
-    { label: displayName.value, disabled: true, class: "profile-menu-label" },
-    { separator: true },
-    {
-      label: "My Wallet",
-      icon: "pi pi-wallet",
-      command: () => router.push({ name: "wallet" }),
-    },
-    {
-      label: theme.value === "dark" ? "Light mode" : "Dark mode",
-      icon: theme.value === "dark" ? "pi pi-sun" : "pi pi-moon",
-      command: toggle,
-    },
-    { separator: true },
-    { label: "Log out", icon: "pi pi-sign-out", command: logout },
-  ]);
+  const profileMenuItems = computed<MenuItem[]>(() => {
+    const items: MenuItem[] = [
+      { label: displayName.value, disabled: true, class: "profile-menu-label" },
+      { separator: true },
+    ];
+    // Skip "My Wallet" when already on the wallet page.
+    if (route.name !== "wallet") {
+      items.push({
+        label: "My Wallet",
+        icon: "pi pi-wallet",
+        command: () => router.push({ name: "wallet" }),
+      });
+      items.push({ separator: true });
+    }
+    items.push({ label: "Log out", icon: "pi pi-sign-out", command: logout });
+    return items;
+  });
 
   return { displayName, userInitials, profileMenuItems };
 }

@@ -31,7 +31,7 @@ This is **not** a single product. It's the **delveen** brand site fronting the *
 - `/wallet` → `wallecx/WallecxApp.vue` — the actual Kaheeta app, `meta.requiresAuth`. The `beforeEach` guard bounces unauthenticated users to `/login`.
 - `/login` → `Login.vue`. On success, redirects to `?redirect=` or defaults to `/wallet`.
 
-`App.vue` renders one shared navbar — `KaheetaNavBar` — across **all** routes inside a flex-column shell (`<div class="flex min-h-screen flex-col">` → navbar + `<main class="flex flex-1 flex-col">`). The navbar adapts to auth state via `useProfileMenu`: logged-out shows a theme toggle + "Log in" CTA; logged-in shows the profile menu (My Wallet / theme toggle / Log out). `App.vue` passes `:show-login="route.name !== 'login'"` so the login page doesn't show a redundant "Log in" button.
+`App.vue` renders one shared navbar — `KaheetaNavBar` — across **all** routes inside a flex-column shell (`<div class="flex min-h-screen flex-col">` → navbar + `<main class="flex flex-1 flex-col">`). The theme toggle is always visible in the navbar (every auth state). The rest adapts via `useProfileMenu`: logged-out shows a "Log in" CTA; logged-in shows the profile menu (My Wallet / Log out). `App.vue` passes `:show-login="route.name !== 'login'"` so the login page doesn't show a redundant "Log in" button.
 
 ## The "wallecx" vs "kaheeta" boundary (read before renaming anything)
 

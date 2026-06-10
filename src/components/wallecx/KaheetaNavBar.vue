@@ -33,34 +33,32 @@ const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
       </RouterLink>
 
       <div class="kaheeta-navbar-actions">
-        <template v-if="!auth.isLoggedIn">
-          <Button
-            text
-            rounded
-            severity="secondary"
-            :aria-label="
-              theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
-            "
-            @click="toggle"
-          >
-            <iconify-icon
-              :icon="
-                theme === 'dark' ? 'mdi:weather-sunny' : 'mdi:weather-night'
-              "
-              width="20"
-              height="20"
-              aria-hidden="true"
-            ></iconify-icon>
-          </Button>
-          <Button
-            v-if="showLogin"
-            as="router-link"
-            :to="LOGIN"
-            unstyled
-            class="nav-login-btn"
-            >Log in</Button
-          >
-        </template>
+        <!-- Theme toggle is always visible in the navbar, in every auth state. -->
+        <Button
+          text
+          rounded
+          severity="secondary"
+          :aria-label="
+            theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+          "
+          @click="toggle"
+        >
+          <iconify-icon
+            :icon="theme === 'dark' ? 'mdi:weather-sunny' : 'mdi:weather-night'"
+            width="20"
+            height="20"
+            aria-hidden="true"
+          ></iconify-icon>
+        </Button>
+
+        <Button
+          v-if="!auth.isLoggedIn && showLogin"
+          as="router-link"
+          :to="LOGIN"
+          unstyled
+          class="nav-login-btn"
+          >Log in</Button
+        >
 
         <template v-if="auth.isLoggedIn">
           <Menu ref="menuRef" :model="profileMenuItems" popup />
