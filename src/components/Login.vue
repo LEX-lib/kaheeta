@@ -57,24 +57,62 @@ const resolver = ref(
 </script>
 
 <template>
-  <div class="flex flex-1 items-center justify-center p-4 login-bg">
-    <div class="w-full max-w-md">
-      <div
-        class="relative rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-xl p-6 sm:p-8"
-      >
-        <div
-          class="absolute inset-0 rounded-2xl pointer-events-none"
-          style="box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25)"
-        ></div>
-        <div class="mb-6 text-center">
-          <h1
-            class="text-2xl font-semibold text-black dark:text-white drop-shadow"
-          >
-            Welcome back
-          </h1>
-          <p class="mt-1 text-black/80 dark:text-white/80 text-sm">
-            Sign in to continue
-          </p>
+  <div class="login-shell">
+    <!-- Brand showcase panel -->
+    <section class="brand-panel">
+      <div class="brand-content">
+        <RouterLink to="/" class="brand-mark" aria-label="Kaheeta home">
+          <img src="/kaheeta-logo.svg" alt="" width="32" height="32" />
+          <span>Kaheeta</span>
+        </RouterLink>
+
+        <div class="accent-rule"></div>
+        <h1 class="brand-title">
+          Your wallet,<br /><span class="em">digitized.</span>
+        </h1>
+        <p class="brand-tagline">
+          The everyday Filipino wallet — your IDs, cards, vaccination records
+          and receipts — always in your pocket.
+        </p>
+
+        <ul class="brand-features">
+          <li>
+            <iconify-icon
+              icon="mdi:card-account-details-outline"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            ></iconify-icon>
+            IDs &amp; membership cards
+          </li>
+          <li>
+            <iconify-icon
+              icon="mdi:receipt-text-outline"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            ></iconify-icon>
+            Receipts &amp; expenses
+          </li>
+          <li>
+            <iconify-icon
+              icon="mdi:needle"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            ></iconify-icon>
+            Vaccination records
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Sign-in form panel -->
+    <section class="form-panel">
+      <div class="form-content">
+        <div class="form-head">
+          <h2>Welcome back</h2>
+          <p>Sign in to open your wallet.</p>
         </div>
 
         <Form
@@ -82,7 +120,7 @@ const resolver = ref(
           :initialValues
           :resolver
           @submit="login"
-          class="space-y-5"
+          class="login-form"
           validate-on-submit
         >
           <div class="flex flex-col gap-1">
@@ -128,68 +166,221 @@ const resolver = ref(
             </FloatLabel>
           </div>
 
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <Checkbox input-id="remember" v-model="remember" :binary="true" />
-              <label
-                for="remember"
-                class="text-sm text-black/90 dark:text-white/90"
-                >Remember me</label
-              >
-            </div>
+          <div class="flex items-center gap-2">
+            <Checkbox input-id="remember" v-model="remember" :binary="true" />
+            <label for="remember" class="remember-label">Remember me</label>
           </div>
 
-          <Button
-            type="submit"
-            label="Sign in"
-            icon="pi pi-sign-in"
-            class="w-full"
-          />
+          <button type="submit" class="login-submit">
+            Log in
+            <span class="arrow">→</span>
+          </button>
         </Form>
+
+        <p class="invite-note">Sign-up is invite-only (beta)</p>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-/* Subtle gradient text helper if needed */
-:deep(.p-inputtext),
-:deep(.p-password),
-:deep(.p-checkbox),
-:deep(.p-button) {
-  /* Ensure frosted container vibes by lifting contrast inside glass */
+.login-shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
 }
 
-/* Brand-aligned backdrop — amber glow over a navy-tinted base, matching the
-   landing hero. Surface + amber glow come from shared tokens (so the base flips
-   to navy in dark automatically); the secondary navy glow is kept explicit
-   because --color-brand-primary inverts to amber in dark. */
-.login-bg {
-  background-color: var(--color-surface-page);
-  background-image:
+/* ─── Brand showcase panel (always navy, both themes) ─────────────────────── */
+.brand-panel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  color: #ffffff;
+  background:
     radial-gradient(
-      900px 500px at 12% -10%,
-      color-mix(in srgb, var(--color-brand-accent) 16%, transparent),
+      700px 420px at 12% -10%,
+      rgba(232, 152, 32, 0.2),
       transparent 60%
     ),
-    radial-gradient(
-      800px 600px at 100% 110%,
-      color-mix(in srgb, var(--color-brand-primary) 8%, transparent),
-      transparent 55%
-    );
+    #002244;
+}
+/* dot grid, fading toward the form panel */
+.brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 82%);
+  pointer-events: none;
+}
+.brand-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2rem) clamp(1.25rem, 5vw, 2.5rem);
+}
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-decoration: none;
+}
+.accent-rule {
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e89820;
+  margin: 1.75rem 0 1.25rem;
+}
+.brand-title {
+  font-weight: 900;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+.brand-title .em {
+  color: #e89820;
+}
+.brand-tagline {
+  color: rgba(215, 226, 240, 0.82);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  max-width: 34ch;
+  margin-top: 1.25rem;
+}
+.brand-features {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.brand-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.98rem;
+  color: #d7e2f0;
+}
+.brand-features iconify-icon {
+  color: #e89820;
+  flex-shrink: 0;
 }
 
-:global(.my-app-dark) .login-bg {
-  background-image:
-    radial-gradient(
-      900px 500px at 12% -10%,
-      color-mix(in srgb, var(--color-brand-accent) 18%, transparent),
-      transparent 60%
-    ),
-    radial-gradient(
-      800px 600px at 100% 110%,
-      rgba(13, 51, 96, 0.9),
-      transparent 55%
-    );
+/* ─── Form panel ──────────────────────────────────────────────────────────── */
+.form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.75rem, 5vw, 3.5rem);
+  background: var(--color-surface-card);
+}
+.form-content {
+  width: 100%;
+  max-width: 23rem;
+}
+.form-head {
+  margin-bottom: 1.75rem;
+}
+.form-head h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-typo-heading);
+}
+.form-head p {
+  margin-top: 0.3rem;
+  color: var(--color-typo-muted);
+  font-size: 0.95rem;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+.remember-label {
+  font-size: 0.875rem;
+  color: var(--color-typo-body);
+}
+.login-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.72rem 1.2rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-brand-accent);
+  color: #002244; /* brand navy — invariant contrast on amber */
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+.login-submit:hover {
+  background: var(--color-brand-accent-hover);
+  transform: translateY(-1px);
+}
+.login-submit .arrow {
+  transition: transform 0.18s ease;
+}
+.login-submit:hover .arrow {
+  transform: translateX(3px);
+}
+.invite-note {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-typo-muted);
+}
+
+/* ─── Responsive: split on desktop, stacked slim header on mobile ─────────── */
+@media (min-width: 1024px) {
+  .login-shell {
+    flex-direction: row;
+  }
+  .brand-panel {
+    flex: 0 0 46%;
+    max-width: 46%;
+  }
+}
+@media (max-width: 1023px) {
+  /* Compact navy header above the form. */
+  .brand-tagline,
+  .brand-features {
+    display: none;
+  }
+  .accent-rule {
+    margin: 1.25rem 0 1rem;
+  }
+  .brand-title {
+    font-size: 1.9rem;
+  }
 }
 </style>
