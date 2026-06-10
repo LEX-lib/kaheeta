@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useMobileEnv, clearInstallPromptEvent } from '@/composables/useMobileEnv';
+import { ref, onMounted } from "vue";
+import {
+  useMobileEnv,
+  clearInstallPromptEvent,
+} from "@/composables/useMobileEnv";
 
-const BANNER_DISMISSED_KEY = 'kaheeta_pwa_banner_dismissed';
+const BANNER_DISMISSED_KEY = "kaheeta_pwa_banner_dismissed";
 
 // --- Interfaces and constants (D-37-06) ---
 interface DismissalRecord {
   dismissedAt: string; // ISO8601
-  platform: 'ios' | 'android';
+  platform: "ios" | "android";
 }
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -33,9 +36,10 @@ function isIosSafari(): boolean {
 // useMobileEnv.isStandalone for belt-and-suspenders (Pitfall 2).
 function isInStandaloneMode(): boolean {
   return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    ('standalone' in window.navigator &&
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true)
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in window.navigator &&
+      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+        true)
   );
 }
 
@@ -54,10 +58,10 @@ function isDismissed(): boolean {
 
     // D-37-07: Lazy migration of Phase 14 legacy schema ('true' string).
     // 30-day clock starts NOW — fair re-show in 30 days, not permanent suppression.
-    if (raw === 'true') {
+    if (raw === "true") {
       const migrated: DismissalRecord = {
         dismissedAt: new Date().toISOString(),
-        platform: isIosSafari() ? 'ios' : 'android',
+        platform: isIosSafari() ? "ios" : "android",
       };
       localStorage.setItem(BANNER_DISMISSED_KEY, JSON.stringify(migrated));
       return true;
@@ -75,13 +79,13 @@ function isDismissed(): boolean {
  * Writes a new dismissal record with the given platform and current timestamp.
  * Degrades silently on failure.
  */
-function writeDismissalRecord(platform: 'ios' | 'android'): void {
+function writeDismissalRecord(platform: "ios" | "android"): void {
   try {
     // D-37-06 schema: { dismissedAt: ISO8601, platform: 'ios'|'android' }
     const record: DismissalRecord =
-      platform === 'ios'
-        ? { dismissedAt: new Date().toISOString(), platform: 'ios' }
-        : { dismissedAt: new Date().toISOString(), platform: 'android' };
+      platform === "ios"
+        ? { dismissedAt: new Date().toISOString(), platform: "ios" }
+        : { dismissedAt: new Date().toISOString(), platform: "android" };
     localStorage.setItem(BANNER_DISMISSED_KEY, JSON.stringify(record));
   } catch {
     // Degrade silently
@@ -92,7 +96,7 @@ function writeDismissalRecord(platform: 'ios' | 'android'): void {
 
 /** Dismiss the iOS branch: write JSON record and hide the iOS banner. */
 function dismissIos(): void {
-  writeDismissalRecord('ios');
+  writeDismissalRecord("ios");
   isIosVisible.value = false;
 }
 
@@ -101,7 +105,7 @@ function dismissIos(): void {
  * so the v-else-if branch self-extinguishes (D-37-04).
  */
 function dismissAndroid(): void {
-  writeDismissalRecord('android');
+  writeDismissalRecord("android");
   clearInstallPromptEvent();
 }
 
@@ -125,8 +129,8 @@ async function handleAndroidInstall(): Promise<void> {
 
   const { outcome } = await event.userChoice;
 
-  if (outcome === 'dismissed') {
-    writeDismissalRecord('android');
+  if (outcome === "dismissed") {
+    writeDismissalRecord("android");
   }
   // On any outcome, clear the singleton (M-9 single-use, D-37-04)
   clearInstallPromptEvent();
@@ -168,19 +172,30 @@ onMounted(() => {
         icon="mdi:share-variant"
         width="20"
         height="20"
-        style="color: #e89820; flex-shrink: 0;"
+        style="color: var(--color-brand-accent); flex-shrink: 0"
         aria-hidden="true"
       ></iconify-icon>
-      <span class="flex-1 text-sm" style="color: #ffffff;">
-        Tap <strong>Share</strong> then <strong>Add to Home Screen</strong> to install Kaheeta
+      <span class="flex-1 text-sm" style="color: #ffffff">
+        Tap <strong>Share</strong> then <strong>Add to Home Screen</strong> to
+        install Kaheeta
       </span>
       <button
         class="min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
-        style="color: rgba(255,255,255,0.7); background: none; border: none; cursor: pointer;"
+        style="
+          color: rgba(255, 255, 255, 0.7);
+          background: none;
+          border: none;
+          cursor: pointer;
+        "
         aria-label="Dismiss install banner"
         @click="dismissIos"
       >
-        <iconify-icon icon="mdi:close" width="20" height="20" aria-hidden="true"></iconify-icon>
+        <iconify-icon
+          icon="mdi:close"
+          width="20"
+          height="20"
+          aria-hidden="true"
+        ></iconify-icon>
       </button>
     </div>
 
@@ -197,12 +212,12 @@ onMounted(() => {
       role="complementary"
       aria-label="Install Kaheeta"
     >
-      <span class="flex-1 text-sm" style="color: #ffffff;">
+      <span class="flex-1 text-sm" style="color: #ffffff">
         Install Kaheeta for faster access and home-screen shortcuts.
       </span>
       <button
         class="min-w-[44px] min-h-[44px] px-3 touch-manipulation"
-        style="color: #ffffff; background: none; border: none; cursor: pointer;"
+        style="color: #ffffff; background: none; border: none; cursor: pointer"
         aria-label="Install Kaheeta"
         @click="handleAndroidInstall"
       >
@@ -210,11 +225,21 @@ onMounted(() => {
       </button>
       <button
         class="min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
-        style="color: rgba(255,255,255,0.7); background: none; border: none; cursor: pointer;"
+        style="
+          color: rgba(255, 255, 255, 0.7);
+          background: none;
+          border: none;
+          cursor: pointer;
+        "
         aria-label="Dismiss install banner"
         @click="dismissAndroid"
       >
-        <iconify-icon icon="mdi:close" width="20" height="20" aria-hidden="true"></iconify-icon>
+        <iconify-icon
+          icon="mdi:close"
+          width="20"
+          height="20"
+          aria-hidden="true"
+        ></iconify-icon>
       </button>
     </div>
   </Teleport>

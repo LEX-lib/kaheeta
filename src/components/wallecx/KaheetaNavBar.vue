@@ -129,8 +129,8 @@ const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
   padding: 0.45rem 1.15rem;
   border: none;
   border-radius: 999px;
-  background: #e89820; /* brand amber */
-  color: #002244; /* brand navy */
+  background: var(--color-brand-accent);
+  color: #002244; /* brand navy — invariant contrast color on amber (both themes) */
   font-weight: 600;
   font-size: 0.9rem;
   line-height: 1;
@@ -141,7 +141,7 @@ const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
     transform 0.18s ease;
 }
 .nav-login-btn:hover {
-  background: #f5b450; /* amber-light */
+  background: var(--color-brand-accent-hover);
   transform: translateY(-1px);
 }
 
@@ -162,16 +162,18 @@ const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
     border-color 0.18s ease;
 }
 .profile-trigger:hover {
-  background: var(--color-surface-card, #f5f7fa);
-  border-color: var(--p-primary-500, #002244);
+  background: var(--color-surface-card-2);
+  border-color: var(--color-brand-accent);
 }
 
 .profile-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--p-primary-500, #002244);
-  color: #ffffff;
+  /* navy bg + white text in light; flips to amber bg + navy text in dark
+     (both via shared tokens) so the avatar stays legible on either surface. */
+  background: var(--color-brand-primary);
+  color: var(--color-surface-card);
   font-size: 0.72rem;
   font-weight: 700;
   display: grid;
