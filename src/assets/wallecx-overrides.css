@@ -40,19 +40,30 @@
   height: 85dvh !important;
 }
 
-/* Phase 18 D-03 fallback: PrimeVue Card visible separation in dark mode.
+/* Dark mode: navy-based surface cohesion.
  *
- * Aura's dark color scheme sets `--p-card-background` very close to the page
- * background (~#0d1117), causing VaccinationGroupCard and MembershipCard tiles
- * to blend into the page in dark mode — the cards look like one continuous
- * dark area with text floating on it.
+ * PrimeVue's Aura dark scheme paints the Tabs tablist/panel and inner surfaces
+ * from a near-black ramp, which clashed with our navy card/navbar tokens (page
+ * navy, but tablist/panel black). Remap the PrimeVue surface tokens to the navy
+ * palette so the whole app reads as one navy theme, with three depth levels:
+ *   page #001327 (App shell bg)  →  panel/tabs #0A2C52  →  lifted tiles #0E3360.
  *
- * Lift the card surface and add a subtle border to restore visible separation.
- * Scoped to `.my-app-dark` so light mode is untouched. */
+ * Inner tiles (VaccinationGroupCard, MembershipCard) lift to surface-card-2 so
+ * they separate from the surface-card panel; the WallecxApp root Card and the
+ * Tabs surfaces stay at surface-card. Scoped to `.my-app-dark`. */
 .my-app-dark .p-card {
-  --p-card-background: var(--color-surface-card);
+  --p-card-background: var(--color-surface-card-2);
   --p-card-border-color: var(--color-surface-divider);
   border: 1px solid var(--p-card-border-color);
+}
+.my-app-dark .wallecx-root.p-card {
+  --p-card-background: var(--color-surface-card);
+}
+.my-app-dark .wallecx-root {
+  --p-tabs-tablist-background: var(--color-surface-card);
+  --p-tabs-tabpanel-background: var(--color-surface-card);
+  --p-tabs-tab-background: transparent;
+  --p-tabs-tab-active-background: transparent;
 }
 
 /* Phase 34 LT-01: 44×44 touch-target floor for icon-only PrimeVue buttons.

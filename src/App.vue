@@ -11,7 +11,7 @@ const showLoginCta = computed(() => route.name !== "login");
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col">
+  <div class="flex min-h-screen flex-col bg-surface-page">
     <KaheetaNavBar :show-login="showLoginCta" />
     <main class="flex flex-1 flex-col">
       <RouterView />
