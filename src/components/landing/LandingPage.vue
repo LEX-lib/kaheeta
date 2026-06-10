@@ -146,14 +146,15 @@ const features = [
   --amber-soft: #fdf3dc;
   --navy: #002244; /* always used for contrast on amber backgrounds */
 
-  /* Themeable tokens — light defaults */
-  --pg-bg: #f5f7fa;
-  --pg-surface: #ffffff;
-  --pg-surface-2: #eef1f6;
-  --pg-heading: #0d1117;
-  --pg-text: #3d4a5c;
-  --pg-muted: #6b7280;
-  --pg-line: rgba(0, 34, 68, 0.1);
+  /* Themeable tokens — sourced from the shared palette (base.css) so light
+     and dark both flow from one place. */
+  --pg-bg: var(--color-surface-page);
+  --pg-surface: var(--color-surface-card);
+  --pg-surface-2: var(--color-surface-card-2);
+  --pg-heading: var(--color-typo-heading);
+  --pg-text: var(--color-typo-body);
+  --pg-muted: var(--color-typo-muted);
+  --pg-line: var(--color-surface-divider);
 
   /* Component-specific tokens — light defaults */
   --nav-bg: rgba(248, 250, 252, 0.88);
@@ -182,16 +183,10 @@ const features = [
   overflow-x: hidden;
 }
 
-/* ─── Dark-mode overrides (Lexarium pattern) ──────────────────────────────── */
+/* ─── Dark-mode overrides ─────────────────────────────────────────────────────
+   Core surface/typography tokens flip automatically via the shared --color-*
+   palette; only the landing-specific aesthetic tokens are overridden here. */
 :global(.my-app-dark .kaheeta-page) {
-  --pg-bg: #001327;
-  --pg-surface: #0a2c52;
-  --pg-surface-2: #0e3360;
-  --pg-heading: #ffffff;
-  --pg-text: #d7e2f0;
-  --pg-muted: #8095af;
-  --pg-line: rgba(255, 255, 255, 0.08);
-
   --nav-bg: rgba(0, 19, 39, 0.72);
   --hero-base: #002244;
   --hero-overlay: rgba(13, 51, 96, 0.9);

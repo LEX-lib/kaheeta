@@ -161,34 +161,31 @@ const resolver = ref(
 }
 
 /* Brand-aligned backdrop — amber glow over a navy-tinted base, matching the
-   landing hero. Light defaults below; dark overrides deepen to navy. */
+   landing hero. Surface + amber glow come from shared tokens (so the base flips
+   to navy in dark automatically); the secondary navy glow is kept explicit
+   because --color-brand-primary inverts to amber in dark. */
 .login-bg {
-  background-color: #f5f7fa;
+  background-color: var(--color-surface-page);
   background-image:
     radial-gradient(
       900px 500px at 12% -10%,
-      rgba(232, 152, 32, 0.16),
+      color-mix(in srgb, var(--color-brand-accent) 16%, transparent),
       transparent 60%
     ),
     radial-gradient(
       800px 600px at 100% 110%,
-      rgba(0, 34, 68, 0.08),
+      color-mix(in srgb, var(--color-brand-primary) 8%, transparent),
       transparent 55%
     );
 }
 
 :global(.my-app-dark) .login-bg {
-  background-color: #001327;
   background-image:
     radial-gradient(
       900px 500px at 12% -10%,
-      rgba(232, 152, 32, 0.18),
+      color-mix(in srgb, var(--color-brand-accent) 18%, transparent),
       transparent 60%
     ),
-    radial-gradient(
-      800px 600px at 100% 110%,
-      rgba(13, 51, 96, 0.9),
-      transparent 55%
-    );
+    radial-gradient(800px 600px at 100% 110%, rgba(13, 51, 96, 0.9), transparent 55%);
 }
 </style>

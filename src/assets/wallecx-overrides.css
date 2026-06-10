@@ -50,8 +50,8 @@
  * Lift the card surface and add a subtle border to restore visible separation.
  * Scoped to `.my-app-dark` so light mode is untouched. */
 .my-app-dark .p-card {
-  --p-card-background: #1a1f2e;
-  --p-card-border-color: #2a3142;
+  --p-card-background: var(--color-surface-card);
+  --p-card-border-color: var(--color-surface-divider);
   border: 1px solid var(--p-card-border-color);
 }
 
@@ -117,10 +117,10 @@
   }
 
   /* Dark-mode toolbar background — matches the .my-app-dark .p-card override
-   * (--p-card-background: #1a1f2e) exactly so the toolbar is seamless with the
-   * card content even where the variable does not cascade. */
+   * (--color-surface-card) exactly so the toolbar is seamless with the card
+   * content even where the variable does not cascade. */
   .my-app-dark .wallecx-tab-toolbar {
-    background: #1a1f2e;
+    background: var(--color-surface-card);
   }
 }
 
