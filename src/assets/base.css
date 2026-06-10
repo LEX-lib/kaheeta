@@ -30,14 +30,14 @@
   --color-status-info: #378add;
 
   /* Chart palette (Phase 26) — 8-color cyclic palette for per-category bars. */
-  --color-chart-1: #002244;  /* Navy / steel blue (same as brand primary) */
-  --color-chart-2: #0a6bba;  /* Mid blue */
-  --color-chart-3: #1a7c45;  /* Green */
-  --color-chart-4: #e89820;  /* Amber (brand accent) */
-  --color-chart-5: #9c27b0;  /* Purple */
-  --color-chart-6: #378add;  /* Sky blue (info) */
-  --color-chart-7: #d97706;  /* Orange */
-  --color-chart-8: #5b6b80;  /* Neutral slate */
+  --color-chart-1: #002244; /* Navy / steel blue (same as brand primary) */
+  --color-chart-2: #0a6bba; /* Mid blue */
+  --color-chart-3: #1a7c45; /* Green */
+  --color-chart-4: #e89820; /* Amber (brand accent) */
+  --color-chart-5: #9c27b0; /* Purple */
+  --color-chart-6: #378add; /* Sky blue (info) */
+  --color-chart-7: #d97706; /* Orange */
+  --color-chart-8: #5b6b80; /* Neutral slate */
 
   --color-mix-target: #ffffff;
 }

@@ -186,6 +186,10 @@ const resolver = ref(
       color-mix(in srgb, var(--color-brand-accent) 18%, transparent),
       transparent 60%
     ),
-    radial-gradient(800px 600px at 100% 110%, rgba(13, 51, 96, 0.9), transparent 55%);
+    radial-gradient(
+      800px 600px at 100% 110%,
+      rgba(13, 51, 96, 0.9),
+      transparent 55%
+    );
 }
 </style>
