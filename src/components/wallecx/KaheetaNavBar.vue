@@ -1,34 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
+import { ref } from "vue";
 import { useTheme } from "@/composables/useTheme";
 import { useAuthStore } from "@/stores/auth";
+import { useProfileMenu } from "@/composables/useProfileMenu";
 import type Menu from "primevue/menu";
 
-const router = useRouter();
+// The single app-wide navbar (landing, login, wallet). `showLogin` is set false
+// on the login page itself, where a "Log in" CTA would be redundant.
+withDefaults(defineProps<{ showLogin?: boolean }>(), { showLogin: true });
+
 const { theme, toggle } = useTheme();
 const auth = useAuthStore();
+const { displayName, userInitials, profileMenuItems } = useProfileMenu();
 const menuRef = ref<InstanceType<typeof Menu> | null>(null);
 
-const userInitials = computed(() => {
-  const name: string = auth.user?.["name"] || auth.user?.["email"] || "";
-  return name.slice(0, 2).toUpperCase() || "??";
-});
-
-const displayName = computed<string>(
-  () => auth.user?.["name"] || auth.user?.["email"] || "Account",
-);
-
-async function logout() {
-  auth.logout();
-  await router.push({ name: "login" });
-}
-
-const profileMenuItems = computed(() => [
-  { label: displayName.value, disabled: true, class: "profile-menu-label" },
-  { separator: true },
-  { label: "Log out", icon: "pi pi-sign-out", command: logout },
-]);
+const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
 </script>
 
 <template>
@@ -47,20 +33,34 @@ const profileMenuItems = computed(() => [
       </RouterLink>
 
       <div class="kaheeta-navbar-actions">
-        <Button
-          text
-          rounded
-          severity="secondary"
-          :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-          @click="toggle"
-        >
-          <iconify-icon
-            :icon="theme === 'dark' ? 'mdi:weather-sunny' : 'mdi:weather-night'"
-            width="20"
-            height="20"
-            aria-hidden="true"
-          ></iconify-icon>
-        </Button>
+        <template v-if="!auth.isLoggedIn">
+          <Button
+            text
+            rounded
+            severity="secondary"
+            :aria-label="
+              theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            "
+            @click="toggle"
+          >
+            <iconify-icon
+              :icon="
+                theme === 'dark' ? 'mdi:weather-sunny' : 'mdi:weather-night'
+              "
+              width="20"
+              height="20"
+              aria-hidden="true"
+            ></iconify-icon>
+          </Button>
+          <Button
+            v-if="showLogin"
+            as="router-link"
+            :to="LOGIN"
+            unstyled
+            class="nav-login-btn"
+            >Log in</Button
+          >
+        </template>
 
         <template v-if="auth.isLoggedIn">
           <Menu ref="menuRef" :model="profileMenuItems" popup />
@@ -120,6 +120,29 @@ const profileMenuItems = computed(() => [
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+/* Logged-out "Log in" CTA — amber brand pill with navy text. */
+.nav-login-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: #e89820; /* brand amber */
+  color: #002244; /* brand navy */
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+.nav-login-btn:hover {
+  background: #f5b450; /* amber-light */
+  transform: translateY(-1px);
 }
 
 .profile-trigger {

@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { useTheme } from "@/composables/useTheme";
+import { computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
 
-const { theme, toggle } = useTheme();
 const auth = useAuthStore();
+
 const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
 const WALLET = { name: "wallet" } as const;
+
+// The hero / CTA-strip primary buttons adapt to auth state: signed-in visitors
+// jump straight to their wallet, everyone else is sent to log in.
+const ctaTo = computed(() => (auth.isLoggedIn ? WALLET : LOGIN));
+const ctaLabel = computed(() => (auth.isLoggedIn ? "Go to wallet" : "Log in"));
 
 const features = [
   {
@@ -43,45 +48,22 @@ const features = [
 
 <template>
   <div class="kaheeta-page" id="top">
-    <!-- NAV -->
-    <nav class="nav">
-      <div class="container nav-inner">
-        <a href="#top" class="brand-mark">
-          <img src="/kaheeta-logo.svg" alt="" width="28" height="28" />
-          <span>Kaheeta</span>
-        </a>
-        <div class="nav-right">
-          <button
-            class="icon-btn"
-            :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-            @click="toggle"
-          >
-            <iconify-icon
-              :icon="theme === 'dark' ? 'mdi:weather-sunny' : 'mdi:weather-night'"
-              width="20"
-              height="20"
-              aria-hidden="true"
-            ></iconify-icon>
-          </button>
-          <RouterLink v-if="auth.isLoggedIn" :to="WALLET" class="nav-cta">Open wallet</RouterLink>
-          <RouterLink v-else :to="LOGIN" class="nav-cta">Log in</RouterLink>
-        </div>
-      </div>
-    </nav>
-
     <!-- HERO -->
     <header class="hero">
       <div class="container hero-inner">
         <div class="accent-rule"></div>
         <p class="eyebrow">Digital Wallet · Filipino-inspired · Beta</p>
-        <h1 class="hero-title">Your wallet,<br /><span class="em">digitized.</span></h1>
+        <h1 class="hero-title">
+          Your wallet,<br /><span class="em">digitized.</span>
+        </h1>
         <p class="hero-desc">
-          Kaheeta is the digital version of the everyday Filipino wallet — carrying your IDs,
-          membership cards, vaccination records, receipts, and more, always at your fingertips.
+          Kaheeta is the digital version of the everyday Filipino wallet —
+          carrying your IDs, membership cards, vaccination records, receipts,
+          and more, always at your fingertips.
         </p>
         <div class="cta-row">
-          <Button as="router-link" :to="LOGIN" unstyled class="btn btn-primary"
-            >Log in <span class="arrow">→</span></Button
+          <Button as="router-link" :to="ctaTo" unstyled class="btn btn-primary"
+            >{{ ctaLabel }} <span class="arrow">→</span></Button
           >
           <span class="beta-note">Sign-up is invite-only (beta)</span>
         </div>
@@ -92,11 +74,18 @@ const features = [
     <section class="features section-pad" id="features">
       <div class="container">
         <p class="section-label">What's in your wallet</p>
-        <h2 class="section-title">Everything you carry,<br />always with you.</h2>
+        <h2 class="section-title">
+          Everything you carry,<br />always with you.
+        </h2>
         <div class="feature-grid">
           <div v-for="f in features" :key="f.title" class="feature-card">
             <div class="feature-icon">
-              <iconify-icon :icon="f.icon" width="24" height="24" aria-hidden="true"></iconify-icon>
+              <iconify-icon
+                :icon="f.icon"
+                width="24"
+                height="24"
+                aria-hidden="true"
+              ></iconify-icon>
             </div>
             <h3>{{ f.title }}</h3>
             <p>{{ f.desc }}</p>
@@ -108,14 +97,21 @@ const features = [
     <!-- CTA STRIP -->
     <section class="cta-strip">
       <div class="container cta-box">
-        <p class="section-label" style="text-align: center">Already have access?</p>
+        <p class="section-label" style="text-align: center">
+          Already have access?
+        </p>
         <h2>Pick up where you left off.</h2>
-        <p>Log in to open your wallet — cards, records, and expenses, right where you left them.</p>
+        <p>
+          Log in to open your wallet — cards, records, and expenses, right where
+          you left them.
+        </p>
         <div class="cta-row" style="justify-content: center">
-          <Button as="router-link" :to="LOGIN" unstyled class="btn btn-primary"
-            >Log in <span class="arrow">→</span></Button
+          <Button as="router-link" :to="ctaTo" unstyled class="btn btn-primary"
+            >{{ ctaLabel }} <span class="arrow">→</span></Button
           >
-          <a href="mailto:hello@delveen.dev" class="btn btn-ghost">Get in touch</a>
+          <a href="mailto:hello@delveen.dev" class="btn btn-ghost"
+            >Get in touch</a
+          >
         </div>
       </div>
     </section>
@@ -132,7 +128,9 @@ const features = [
           <a href="mailto:hello@delveen.dev">Contact</a>
         </div>
         <div class="footer-meta">
-          A <a href="https://delveen.dev" class="delveen-link">delveen</a> product · © 2026
+          A
+          <a href="https://delveen.dev" class="delveen-link">delveen</a> product
+          · © 2026
         </div>
       </div>
     </footer>
@@ -146,7 +144,7 @@ const features = [
   --amber: #e89820;
   --amber-light: #f5b450;
   --amber-soft: #fdf3dc;
-  --navy: #002244;        /* always used for contrast on amber backgrounds */
+  --navy: #002244; /* always used for contrast on amber backgrounds */
 
   /* Themeable tokens — light defaults */
   --pg-bg: #f5f7fa;
@@ -171,7 +169,8 @@ const features = [
 
   --maxw: 1120px;
   --font:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
 
   font-family: var(--font);
   color: var(--pg-text);
@@ -230,74 +229,20 @@ const features = [
   padding: 0 clamp(1.25rem, 4vw, 2.5rem);
 }
 
-/* Nav */
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: var(--nav-bg);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--pg-line);
-  transition: background 0.3s ease;
-}
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 68px;
-}
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-weight: 800;
-  font-size: 1.2rem;
-  letter-spacing: -0.02em;
-  color: var(--pg-heading);
-}
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  color: var(--pg-muted);
-  cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease;
-}
-.icon-btn:hover {
-  color: var(--pg-heading);
-  background: var(--icon-hover-bg);
-}
-.nav-cta {
-  padding: 0.5rem 1.1rem;
-  border: 1px solid rgba(232, 152, 32, 0.4);
-  border-radius: 999px;
-  color: var(--nav-cta-color) !important;
-  font-size: 0.92rem;
-  font-weight: 500;
-  transition: all 0.18s ease;
-}
-.nav-cta:hover {
-  background: var(--amber);
-  border-color: var(--amber);
-  color: var(--navy) !important;
-}
-
 /* Hero */
 .hero {
   position: relative;
   background:
-    radial-gradient(900px 500px at 12% -10%, rgba(232, 152, 32, 0.14), transparent 60%),
-    radial-gradient(800px 600px at 100% 110%, var(--hero-overlay), transparent 55%),
+    radial-gradient(
+      900px 500px at 12% -10%,
+      rgba(232, 152, 32, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(
+      800px 600px at 100% 110%,
+      var(--hero-overlay),
+      transparent 55%
+    ),
     var(--hero-base);
   overflow: hidden;
   transition: background 0.3s ease;

@@ -57,9 +57,7 @@ const resolver = ref(
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-cover bg-center bg-fixed flex items-center justify-center p-4 login-bg"
-  >
+  <div class="flex flex-1 items-center justify-center p-4 login-bg">
     <div class="w-full max-w-md">
       <div
         class="relative rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-xl p-6 sm:p-8"
@@ -69,10 +67,14 @@ const resolver = ref(
           style="box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25)"
         ></div>
         <div class="mb-6 text-center">
-          <h1 class="text-2xl font-semibold text-black dark:text-white drop-shadow">
+          <h1
+            class="text-2xl font-semibold text-black dark:text-white drop-shadow"
+          >
             Welcome back
           </h1>
-          <p class="mt-1 text-black/80 dark:text-white/80 text-sm">Sign in to continue</p>
+          <p class="mt-1 text-black/80 dark:text-white/80 text-sm">
+            Sign in to continue
+          </p>
         </div>
 
         <Form
@@ -129,7 +131,9 @@ const resolver = ref(
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <Checkbox input-id="remember" v-model="remember" :binary="true" />
-              <label for="remember" class="text-sm text-black/90 dark:text-white/90"
+              <label
+                for="remember"
+                class="text-sm text-black/90 dark:text-white/90"
                 >Remember me</label
               >
             </div>
@@ -156,22 +160,35 @@ const resolver = ref(
   /* Ensure frosted container vibes by lifting contrast inside glass */
 }
 
+/* Brand-aligned backdrop — amber glow over a navy-tinted base, matching the
+   landing hero. Light defaults below; dark overrides deepen to navy. */
 .login-bg {
+  background-color: #f5f7fa;
   background-image:
     radial-gradient(
-      1200px 600px at 50% -20%,
-      rgba(99, 102, 241, 0.15),
-      transparent
+      900px 500px at 12% -10%,
+      rgba(232, 152, 32, 0.16),
+      transparent 60%
     ),
     radial-gradient(
-      800px 400px at 120% 20%,
-      rgba(16, 185, 129, 0.12),
-      transparent
+      800px 600px at 100% 110%,
+      rgba(0, 34, 68, 0.08),
+      transparent 55%
+    );
+}
+
+:global(.my-app-dark) .login-bg {
+  background-color: #001327;
+  background-image:
+    radial-gradient(
+      900px 500px at 12% -10%,
+      rgba(232, 152, 32, 0.18),
+      transparent 60%
     ),
     radial-gradient(
-      800px 400px at -20% 80%,
-      rgba(59, 130, 246, 0.12),
-      transparent
+      800px 600px at 100% 110%,
+      rgba(13, 51, 96, 0.9),
+      transparent 55%
     );
 }
 </style>

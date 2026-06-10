@@ -27,11 +27,11 @@ Requires `VITE_API_BASE_URL` in `.env*` (points at the PocketBase backend). `loc
 
 This is **not** a single product. It's the **delveen** brand site fronting the **Kaheeta** app, sharing one Vue Router instance (`src/router/index.ts`):
 
-- `/` → `landing/LandingPage.vue` — public delveen marketing page (its own nav, dark navy theme baked into scoped CSS). Login entry points here route to `/login?redirect=/wallet`.
+- `/` → `landing/LandingPage.vue` — public delveen marketing page (dark navy theme baked into scoped CSS). Login entry points here route to `/login?redirect=/wallet`.
 - `/wallet` → `wallecx/WallecxApp.vue` — the actual Kaheeta app, `meta.requiresAuth`. The `beforeEach` guard bounces unauthenticated users to `/login`.
 - `/login` → `Login.vue`. On success, redirects to `?redirect=` or defaults to `/wallet`.
 
-`App.vue` renders the in-app navbar (`KaheetaNavBar`, theme toggle + logout) **only** when `route.name === "wallet"` — the landing and login pages have no app chrome.
+`App.vue` renders one shared navbar — `KaheetaNavBar` — across **all** routes inside a flex-column shell (`<div class="flex min-h-screen flex-col">` → navbar + `<main class="flex flex-1 flex-col">`). The navbar adapts to auth state via `useProfileMenu`: logged-out shows a theme toggle + "Log in" CTA; logged-in shows the profile menu (My Wallet / theme toggle / Log out). `App.vue` passes `:show-login="route.name !== 'login'"` so the login page doesn't show a redundant "Log in" button.
 
 ## The "wallecx" vs "kaheeta" boundary (read before renaming anything)
 

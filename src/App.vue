@@ -5,15 +5,17 @@ import { Toaster } from "vue-sonner";
 import KaheetaNavBar from "@/components/wallecx/KaheetaNavBar.vue";
 
 const route = useRoute();
-// The app navbar (theme toggle + logout) only belongs inside the Kaheeta app.
-// The landing page has its own delveen nav; the login page has none.
-const showNavBar = computed(() => route.name === "wallet");
+// One consistent navbar across landing, login, and wallet. The "Log in" CTA is
+// suppressed on the login page itself, where it would be redundant.
+const showLoginCta = computed(() => route.name !== "login");
 </script>
 
 <template>
-  <KaheetaNavBar v-if="showNavBar" />
-  <main>
-    <RouterView />
-  </main>
+  <div class="flex min-h-screen flex-col">
+    <KaheetaNavBar :show-login="showLoginCta" />
+    <main class="flex flex-1 flex-col">
+      <RouterView />
+    </main>
+  </div>
   <Toaster rich-colors position="top-right" />
 </template>
