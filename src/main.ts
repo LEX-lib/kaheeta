@@ -3,8 +3,15 @@ import { createPinia } from "pinia";
 import PrimeVue from "primevue/config";
 import ConfirmationService from "primevue/confirmationservice";
 import Aura from "@primeuix/themes/aura";
-import "iconify-icon";
+import { addCollection } from "iconify-icon";
+import mdiIcons from "@/lib/mdi-icons.json";
 import "./assets/main.css";
+
+// Preload the mdi icons the app uses so they render at first paint without a
+// runtime fetch from the Iconify API. Avoids blank icons on cold loads (and on
+// networks that block the CDN). Regenerate src/lib/mdi-icons.json when adding a
+// new mdi icon. Icons not in this set still fall back to the runtime API.
+addCollection(mdiIcons);
 
 import App from "./App.vue";
 import router from "./router";
