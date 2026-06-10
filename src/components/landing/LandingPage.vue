@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { useTheme } from "@/composables/useTheme";
+import { useAuthStore } from "@/stores/auth";
 
 const { theme, toggle } = useTheme();
+const auth = useAuthStore();
 const LOGIN = { name: "login", query: { redirect: "/wallet" } } as const;
+const WALLET = { name: "wallet" } as const;
 
 const features = [
   {
@@ -60,7 +63,8 @@ const features = [
               aria-hidden="true"
             ></iconify-icon>
           </button>
-          <RouterLink :to="LOGIN" class="nav-cta">Log in</RouterLink>
+          <RouterLink v-if="auth.isLoggedIn" :to="WALLET" class="nav-cta">Open wallet</RouterLink>
+          <RouterLink v-else :to="LOGIN" class="nav-cta">Log in</RouterLink>
         </div>
       </div>
     </nav>
@@ -76,8 +80,8 @@ const features = [
           membership cards, vaccination records, receipts, and more, always at your fingertips.
         </p>
         <div class="cta-row">
-          <RouterLink :to="LOGIN" class="btn btn-primary"
-            >Log in <span class="arrow">→</span></RouterLink
+          <Button as="router-link" :to="LOGIN" unstyled class="btn btn-primary"
+            >Log in <span class="arrow">→</span></Button
           >
           <span class="beta-note">Sign-up is invite-only (beta)</span>
         </div>
@@ -108,8 +112,8 @@ const features = [
         <h2>Pick up where you left off.</h2>
         <p>Log in to open your wallet — cards, records, and expenses, right where you left them.</p>
         <div class="cta-row" style="justify-content: center">
-          <RouterLink :to="LOGIN" class="btn btn-primary"
-            >Log in <span class="arrow">→</span></RouterLink
+          <Button as="router-link" :to="LOGIN" unstyled class="btn btn-primary"
+            >Log in <span class="arrow">→</span></Button
           >
           <a href="mailto:hello@delveen.dev" class="btn btn-ghost">Get in touch</a>
         </div>
@@ -311,7 +315,7 @@ const features = [
 .hero-inner {
   position: relative;
   z-index: 1;
-  padding: clamp(4rem, 11vw, 8.5rem) 0 clamp(4rem, 9vw, 7rem);
+  padding: clamp(2rem, 5vw, 4rem) 0 clamp(2.5rem, 6vw, 5rem);
   max-width: 760px;
 }
 .accent-rule {

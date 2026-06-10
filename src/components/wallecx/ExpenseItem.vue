@@ -33,43 +33,38 @@ const emit = defineEmits<{
       </div>
     </div>
 
-    <!-- Paperclip icon — only when receipt is truthy (falsy check handles "" and undefined) -->
-    <button
+    <!-- Paperclip — only when receipt is truthy (falsy check handles "" and undefined) -->
+    <Button
       v-if="record.receipt"
-      @click.stop="emit('preview', record)"
-      class="min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+      icon="pi pi-paperclip"
       aria-label="View receipt"
-    >
-      <iconify-icon icon="mdi:paperclip" width="20" height="20"
-        style="color: var(--color-typo-muted)" aria-hidden="true" />
-    </button>
+      text
+      rounded
+      severity="secondary"
+      @click.stop="emit('preview', record)"
+    />
 
-    <!-- Edit button -->
-    <button
-      @click.stop="emit('edit', record)"
-      class="min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+    <!-- Edit -->
+    <Button
+      icon="pi pi-pencil"
       aria-label="Edit expense"
-    >
-      <iconify-icon icon="mdi:pencil-outline" width="20" height="20"
-        style="color: var(--color-typo-muted)" aria-hidden="true" />
-    </button>
+      text
+      rounded
+      severity="secondary"
+      @click.stop="emit('edit', record)"
+    />
 
-    <!-- Delete button -->
-    <button
-      @click.stop="emit('delete', record)"
-      class="min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+    <!-- Delete -->
+    <Button
+      icon="pi pi-trash"
       aria-label="Delete expense"
-    >
-      <iconify-icon icon="mdi:trash-can-outline" width="20" height="20"
-        style="color: var(--color-status-error)" aria-hidden="true" />
-    </button>
+      text
+      rounded
+      severity="danger"
+      @click.stop="emit('delete', record)"
+    />
   </div>
 </template>
 
 <style scoped>
-/*
- * No PrimeVue form components in ExpenseItem — all colour values reference
- * CSS variables from base.css that auto-switch when .my-app-dark is active.
- * No :deep overrides required.
- */
 </style>

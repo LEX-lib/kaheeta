@@ -105,7 +105,6 @@ onMounted(async () => {
       }"
     >
     <template #content>
-      <h1 class="text-2xl font-bold mb-4" style="color: var(--color-typo-heading)">Kaheeta</h1>
       <Tabs v-model:value="activeTab" class="wallecx-main-tabs">
         <TabList>
           <Tab value="vaccinations">
