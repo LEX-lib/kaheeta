@@ -8,10 +8,12 @@
   --color-brand-primary-dark: #0a3d6b;
   --color-brand-accent: #e89820;
   --color-brand-accent-light: #fdf3dc;
+  --color-brand-accent-hover: #f5b450; /* amber hover/active tint */
 
   /* Backgrounds & surfaces */
   --color-surface-page: #f5f7fa;
   --color-surface-card: #ffffff;
+  --color-surface-card-2: #eef1f6; /* secondary surface / alternating rows */
   --color-surface-code: #1a1a2e;
   --color-surface-divider: #e8ecf2;
 
@@ -51,20 +53,24 @@
  * Status colors stay theme-independent (warning/error/success/info read the same
  * in both themes). */
 .my-app-dark {
-  --color-brand-primary: #7896ba;
-  --color-brand-primary-dark: #3d6a9a;
-  --color-brand-accent: #f0ab40;
+  /* Navy-based canonical dark theme (see devdoc/branding-palette.md → Dark Mode).
+   * Surfaces are navy; primary/accent invert to amber so CTAs pop on navy. */
+  --color-brand-primary: #e89820;
+  --color-brand-primary-dark: #c87d10;
+  --color-brand-accent: #e89820;
   --color-brand-accent-light: #3a2d10;
+  --color-brand-accent-hover: #f5b450;
 
-  --color-surface-page: #0d1117;
-  --color-surface-card: #1a1a2e;
-  --color-surface-code: #0d1117;
-  --color-surface-divider: #2a3142;
+  --color-surface-page: #001327;
+  --color-surface-card: #0a2c52;
+  --color-surface-card-2: #0e3360;
+  --color-surface-code: #0d1117; /* code/terminal stays near-black */
+  --color-surface-divider: rgba(255, 255, 255, 0.08);
 
-  --color-typo-heading: #f5f7fa;
-  --color-typo-body: #cbd5e1;
-  --color-typo-muted: #9ca3af;
-  --color-typo-link: #f0ab40;
+  --color-typo-heading: #ffffff;
+  --color-typo-body: #d7e2f0;
+  --color-typo-muted: #8095af;
+  --color-typo-link: #e89820;
 
   --color-chart-1: #7896ba;
   --color-chart-2: #5ea6e6;
@@ -75,7 +81,7 @@
   --color-chart-7: #f59e3c;
   --color-chart-8: #9ca8b8;
 
-  --color-mix-target: #0d1117;
+  --color-mix-target: #001327;
 }
 
 a {
