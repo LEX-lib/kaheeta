@@ -1,0 +1,36 @@
+/*
+ * Brand the vue-sonner toasts with the Kaheeta palette (see
+ * devdoc/branding-palette.md). Imported AFTER vue-sonner/style.css so these
+ * win at equal specificity (sonner defines the same vars on
+ * [data-sonner-toaster][data-sonner-theme='light'|'dark']).
+ *
+ * - Plain toasts follow the app surface tokens (white in light, navy in dark).
+ * - Rich-color (semantic) toasts use the palette's status colors as solid
+ *   fills; these are theme-independent, so one block covers light and dark.
+ */
+[data-sonner-toaster][data-sonner-theme] {
+  /* Plain toast() — matches the app surface. */
+  --normal-bg: var(--color-surface-card);
+  --normal-text: var(--color-typo-heading);
+  --normal-border: var(--color-surface-divider);
+
+  /* Success — Emerald */
+  --success-bg: var(--color-status-success);
+  --success-border: color-mix(in srgb, var(--color-status-success) 85%, #000);
+  --success-text: #ffffff;
+
+  /* Error — Ruby */
+  --error-bg: var(--color-status-error);
+  --error-border: color-mix(in srgb, var(--color-status-error) 85%, #000);
+  --error-text: #ffffff;
+
+  /* Warning — Amber Gold (navy text for contrast) */
+  --warning-bg: var(--color-status-warning);
+  --warning-border: color-mix(in srgb, var(--color-status-warning) 85%, #000);
+  --warning-text: #002244;
+
+  /* Info — Sky Blue */
+  --info-bg: var(--color-status-info);
+  --info-border: color-mix(in srgb, var(--color-status-info) 85%, #000);
+  --info-text: #ffffff;
+}

@@ -17,6 +17,7 @@ import App from "./App.vue";
 import router from "./router";
 import "primeicons/primeicons.css";
 import "vue-sonner/style.css";
+//import "./assets/sonner-brand.css"; // brand overrides — must come after sonner's styles
 import { definePreset } from "@primeuix/themes";
 
 // Brand palette:

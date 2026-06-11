@@ -3,8 +3,10 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { Toaster } from "vue-sonner";
 import KaheetaNavBar from "@/components/wallecx/KaheetaNavBar.vue";
+import { useTheme } from "@/composables/useTheme";
 
 const route = useRoute();
+const { theme } = useTheme();
 // One consistent navbar across landing, login, and wallet. The "Log in" CTA is
 // suppressed on the login page itself, where it would be redundant.
 const showLoginCta = computed(() => route.name !== "login");
@@ -17,5 +19,11 @@ const showLoginCta = computed(() => route.name !== "login");
       <RouterView />
     </main>
   </div>
-  <Toaster rich-colors position="top-right" />
+  <Toaster
+    :theme="theme"
+    rich-colors
+    position="bottom-right"
+    :close-button="true"
+    close-button-position="top-right"
+  />
 </template>
