@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, defineAsyncComponent } from "vue";
 import dayjs from "dayjs";
-import { toast } from "vue-sonner";
+import { useToast } from "@/composables/useToast";
 import { useConfirm } from "primevue/useconfirm";
 import { pb } from "@/lib/pocketbase";
 import type { Vaccinations } from "@/types/wallecx/vaccinations/types";
 import { instrumentedGetFullList } from "@/lib/pocketbase/perfInstrument";
 import WallecxSkeleton from "./WallecxSkeleton.vue";
+const toast = useToast();
+
 const ManageVaccination = defineAsyncComponent(() => import("./ManageVaccination.vue"));
 
 const props = defineProps<{ pendingAction?: string | null }>();
@@ -229,7 +231,7 @@ async function exportJson(): Promise<void> {
   if (isExporting.value) return; // POLISH-03: prevent double-click
   const userId = pb.authStore.record?.id;
   if (!userId) {
-    toast.error("Session expired. Please log in again.");
+    toast.sessionExpired();
     return;
   }
   isExporting.value = true;

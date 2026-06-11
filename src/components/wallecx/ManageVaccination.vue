@@ -4,13 +4,15 @@ import { zodResolver } from "@primevue/forms/resolvers/zod";
 import { Form, type FormSubmitEvent } from "@primevue/forms";
 import { z } from "zod";
 import { compressToWebP } from '@/lib/wallecx/compressToWebP'
-import { toast } from "vue-sonner";
+import { useToast } from "@/composables/useToast";
 import dayjs from "dayjs";
 import { pb } from "@/lib/pocketbase";
 import { mapToUpdateVaccination } from "@/lib/pocketbase/vaccinationMapper";
 import type { Vaccinations } from "@/types/wallecx/vaccinations/types";
 import { useMobileEnv } from "@/composables/useMobileEnv";
 import BaseMobileDialog from "./BaseMobileDialog.vue";
+
+const toast = useToast();
 
 const { isMobile } = useMobileEnv();
 
@@ -134,12 +136,12 @@ async function onFileSelect(event: { files: File[] }): Promise<void> {
 
   const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
   if (!allowed.includes(file.type)) {
-    toast.error("File type not supported. Use JPEG, PNG, WebP, or PDF.");
+    toast.fileTypeUnsupported("JPEG, PNG, WebP, or PDF");
     return;
   }
 
   if (file.size > 10 * 1024 * 1024) {
-    toast.error("File too large. Maximum size is 10 MB.");
+    toast.fileTooLarge();
     return;
   }
 
@@ -184,9 +186,9 @@ async function onFileSelect(event: { files: File[] }): Promise<void> {
     const compressed = await compressToWebP(strippedFile)
 
     pendingFile.value = compressed;
-    toast.info("Location data removed."); // D-07: unconditional on every image upload
+    toast.locationDataRemoved(); // D-07: unconditional on every image upload
   } catch (e) {
-    toast.error("Failed to process image. Please try again.");
+    toast.imageProcessFailed();
     console.error("ManageVaccination: EXIF strip failed", e);
     pendingFile.value = null;
   }
@@ -238,7 +240,7 @@ async function onSubmit({ valid, values }: FormSubmitEvent): Promise<void> {
       // Server returns authoritative record with id, created, updated, card filename
       const userId = pb.authStore.record?.id;
       if (!userId) {
-        toast.error("Session expired. Please log in again.");
+        toast.sessionExpired();
         isSaving.value = false;
         return;
       }

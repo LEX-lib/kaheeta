@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, defineAsyncComponent } from 'vue'
-import { toast } from 'vue-sonner'
+import { useToast } from '@/composables/useToast'
 import { pb } from '@/lib/pocketbase'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
 import type { Expenses } from '@/types/wallecx/expenses/types'
@@ -13,6 +13,8 @@ import dayjs from 'dayjs'
 import AttachmentPreview from './AttachmentPreview.vue'
 import ExpensesListView from './ExpensesListView.vue'
 import ExpensesReportsView from './ExpensesReportsView.vue'
+
+const toast = useToast()
 
 const ManageExpense = defineAsyncComponent(() => import('./ManageExpense.vue'))
 
@@ -162,7 +164,7 @@ async function exportJson(): Promise<void> {
   if (isExporting.value) return
   const userId = pb.authStore.record?.id
   if (!userId) {
-    toast.error("Session expired. Please log in again.")
+    toast.sessionExpired()
     return
   }
   isExporting.value = true

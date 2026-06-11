@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue'
-import { toast } from 'vue-sonner'
+import { useToast } from '@/composables/useToast'
 import { pb } from '@/lib/pocketbase'
 import type { Memberships } from '@/types/wallecx/memberships/types'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
 import WallecxSkeleton from './WallecxSkeleton.vue'
+const toast = useToast()
+
 const ManageMembership = defineAsyncComponent(() => import('./ManageMembership.vue'))
 
 const props = defineProps<{ pendingAction?: string | null }>()
@@ -224,7 +226,7 @@ async function exportJson(): Promise<void> {
   if (isExporting.value) return
   const userId = pb.authStore.record?.id
   if (!userId) {
-    toast.error("Session expired. Please log in again.")
+    toast.sessionExpired()
     return
   }
   isExporting.value = true

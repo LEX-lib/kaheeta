@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { toast } from 'vue-sonner'
+import { useToast } from '@/composables/useToast'
 import { pb } from '@/lib/pocketbase'
 import BaseMobileDialog from './BaseMobileDialog.vue'
 import type { ExpenseBudget } from '@/types/wallecx/expense-budgets/types'
 import type { ExpenseCategories } from '@/types/wallecx/expense-categories/types'
+
+const toast = useToast()
 
 const props = defineProps<{
   categories: ExpenseCategories[]
@@ -70,7 +72,7 @@ function onCancel(): void {
 async function onSubmit(): Promise<void> {
   const userId = pb.authStore.record?.id
   if (!userId) {
-    toast.error('Session expired. Please log in again.')
+    toast.sessionExpired()
     return
   }
   isSaving.value = true

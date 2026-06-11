@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, defineAsyncComponent, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { toast } from "vue-sonner";
+import { useToast } from "@/composables/useToast";
 import { useRegisterSW } from "virtual:pwa-register/vue";
 import { pb } from "@/lib/pocketbase";
 import { useMobileEnv } from "@/composables/useMobileEnv";
 import WallecxSkeleton from "./WallecxSkeleton.vue";
 import PwaInstallBanner from './PwaInstallBanner.vue';
 import '@/assets/wallecx-overrides.css';
+
+const toast = useToast();
 
 const VaccinationsTab = defineAsyncComponent(() => import("./VaccinationsTab.vue"));
 const MembershipsTab = defineAsyncComponent(() => import("./MembershipsTab.vue"));

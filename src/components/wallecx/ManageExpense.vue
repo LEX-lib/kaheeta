@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { compressToWebP } from '@/lib/wallecx/compressToWebP'
-import { toast } from 'vue-sonner'
+import { useToast } from '@/composables/useToast'
 import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { mapToUpdateExpense } from '@/lib/pocketbase/expenseMapper'
@@ -10,6 +10,8 @@ import type { Expenses } from '@/types/wallecx/expenses/types'
 import type { ExpenseCategories } from '@/types/wallecx/expense-categories/types'
 import { useMobileEnv } from '@/composables/useMobileEnv'
 import BaseMobileDialog from './BaseMobileDialog.vue'
+
+const toast = useToast()
 
 const props = defineProps<{
   token?: string
@@ -186,13 +188,13 @@ async function onFileSelect(event: { files: File[] }): Promise<void> {
   if (!file) return
 
   if (file.size > 10 * 1024 * 1024) {
-    toast.error('File too large. Maximum size is 10 MB.')
+    toast.fileTooLarge()
     return
   }
 
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
   if (!allowedTypes.includes(file.type)) {
-    toast.error('File type not supported. Use JPEG, PNG, WebP, or PDF.')
+    toast.fileTypeUnsupported('JPEG, PNG, WebP, or PDF')
     return
   }
 
@@ -221,9 +223,9 @@ async function onFileSelect(event: { files: File[] }): Promise<void> {
     // helper's output directly — do NOT wrap it back into a File with the original
     // .jpg name, which would re-introduce the extension/content mismatch.
     pendingFile.value = await compressToWebP(strippedFile)
-    toast.info('Location data removed.')
+    toast.locationDataRemoved()
   } catch {
-    toast.error('Failed to process image. Please try again.')
+    toast.imageProcessFailed()
     pendingFile.value = null
   }
 }
@@ -269,7 +271,7 @@ async function onSubmit(): Promise<void> {
   // Auth null guard (D-11)
   const userId = pb.authStore.record?.id
   if (!userId) {
-    toast.error('Session expired. Please log in again.')
+    toast.sessionExpired()
     return
   }
 

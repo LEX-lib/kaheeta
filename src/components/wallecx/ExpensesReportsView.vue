@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import type { Expenses } from '@/types/wallecx/expenses/types'
 import type { ExpenseBudget } from '@/types/wallecx/expense-budgets/types'
 import type { ExpenseCategories } from '@/types/wallecx/expense-categories/types'
-import { toast } from 'vue-sonner'
+import { useToast } from '@/composables/useToast'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
 import WallecxSkeleton from './WallecxSkeleton.vue'
 import ManageBudget from './ManageBudget.vue'
@@ -19,6 +19,8 @@ import {
   type Period,
 } from '@/lib/wallecx/period'
 import { useChartTheme } from '@/composables/useChartTheme'
+
+const toast = useToast()
 
 const props = defineProps<{
   expenses: Expenses[]
