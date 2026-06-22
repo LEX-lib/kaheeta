@@ -447,3 +447,9 @@ node_modules/.tmp/
 # Local dev secrets / config (credentials, TLS certs) — never commit
 local.jsonc
 *.pem
+
+# Local planning / progress notes — kept on disk, out of version control
+docs/
+
+# ESLint cache
+.eslintcache
