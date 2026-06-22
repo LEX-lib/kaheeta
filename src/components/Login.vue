@@ -212,7 +212,7 @@ const resolver = ref(
       color-mix(in srgb, var(--color-brand-accent) 20%, transparent),
       transparent 60%
     ),
-    var(--color-brand-primary);
+    var(--color-brand-navy);
 }
 /* dot grid, fading toward the form panel */
 .brand-panel::after {

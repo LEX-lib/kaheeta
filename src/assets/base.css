@@ -6,6 +6,12 @@
   /* Brand core */
   --color-brand-primary: #002244;
   --color-brand-primary-dark: #0a3d6b;
+  /* Theme-independent brand navy. Unlike --color-brand-primary (which inverts to
+   * amber in dark mode for CTAs/accents), this stays navy in BOTH themes — for
+   * "always navy" brand showcase surfaces (login brand panel, PWA install
+   * banner) that carry white text + amber accents. Intentionally NOT overridden
+   * under .my-app-dark. */
+  --color-brand-navy: #002244;
   --color-brand-accent: #e89820;
   --color-brand-accent-light: #fdf3dc;
   --color-brand-accent-hover: #f5b450; /* amber hover/active tint */
