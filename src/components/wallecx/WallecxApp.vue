@@ -14,6 +14,7 @@ const toast = useToast();
 const VaccinationsTab = defineAsyncComponent(() => import("./VaccinationsTab.vue"));
 const MembershipsTab = defineAsyncComponent(() => import("./MembershipsTab.vue"));
 const ExpensesTab = defineAsyncComponent(() => import("./ExpensesTab.vue"));
+const ChecklistsTab = defineAsyncComponent(() => import("./ChecklistsTab.vue"));
 
 const route = useRoute();
 const router = useRouter();
@@ -24,6 +25,7 @@ const ACTION_TAB_MAP: Record<string, string> = {
   'add-expense': 'expenses',
   'add-vaccination': 'vaccinations',
   'add-membership': 'memberships',
+  'add-checklist': 'checklists',
   'open-reports': 'expenses',
 };
 
@@ -121,6 +123,23 @@ onMounted(async () => {
             <iconify-icon icon="mdi:cash-multiple" width="16" height="16" aria-hidden="true"></iconify-icon>
             Expenses
           </Tab>
+          <Tab value="checklists">
+            <iconify-icon icon="mdi:checkbox-marked-circle-outline" width="16" height="16" aria-hidden="true"></iconify-icon>
+            Checklist
+            <span
+              style="
+                margin-left: 6px;
+                font-size: 0.6rem;
+                font-weight: 800;
+                letter-spacing: 0.05em;
+                background: var(--color-brand-accent);
+                color: var(--color-brand-navy);
+                padding: 2px 6px;
+                border-radius: 999px;
+              "
+              >NEW</span
+            >
+          </Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="vaccinations">
@@ -144,6 +163,14 @@ onMounted(async () => {
               <ExpensesTab :pending-action="pendingAction" />
               <template #fallback>
                 <WallecxSkeleton variant="expense-row" :count="3" />
+              </template>
+            </Suspense>
+          </TabPanel>
+          <TabPanel value="checklists">
+            <Suspense>
+              <ChecklistsTab :pending-action="pendingAction" />
+              <template #fallback>
+                <WallecxSkeleton variant="checklist" :count="3" />
               </template>
             </Suspense>
           </TabPanel>

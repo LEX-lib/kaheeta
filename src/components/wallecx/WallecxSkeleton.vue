@@ -1,6 +1,6 @@
 <script setup lang="ts">
 interface Props {
-  variant: 'vaccination-card' | 'membership-card' | 'expense-row' | 'reports-chart' | 'attachment'
+  variant: 'vaccination-card' | 'membership-card' | 'expense-row' | 'reports-chart' | 'attachment' | 'checklist'
   count?: number
 }
 const props = withDefaults(defineProps<Props>(), { count: 1 })
@@ -35,6 +35,14 @@ const props = withDefaults(defineProps<Props>(), { count: 1 })
     <Skeleton width="12rem" height="2.5rem" />
     <Skeleton width="8rem" height="3rem" />
     <Skeleton width="100%" height="220px" class="rounded" />
+  </div>
+
+  <!-- checklist → ChecklistsTab two-pane: rail of cards + detail panel -->
+  <div v-else-if="props.variant === 'checklist'" class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4">
+    <div class="flex flex-col gap-2">
+      <Skeleton v-for="i in props.count" :key="i" height="4.5rem" class="w-full rounded" />
+    </div>
+    <Skeleton height="20rem" class="w-full rounded" />
   </div>
 
   <!-- attachment → mirrors AttachmentPreview.vue lines 75–80 (generic "Loading…" copy) -->
