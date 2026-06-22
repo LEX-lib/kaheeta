@@ -209,10 +209,10 @@ const resolver = ref(
   background:
     radial-gradient(
       700px 420px at 12% -10%,
-      rgba(232, 152, 32, 0.2),
+      color-mix(in srgb, var(--color-brand-accent) 20%, transparent),
       transparent 60%
     ),
-    #002244;
+    var(--color-brand-primary);
 }
 /* dot grid, fading toward the form panel */
 .brand-panel::after {
@@ -250,7 +250,7 @@ const resolver = ref(
   width: 56px;
   height: 5px;
   border-radius: 999px;
-  background: #e89820;
+  background: var(--color-brand-accent);
   margin: 1.75rem 0 1.25rem;
 }
 .brand-title {
@@ -260,7 +260,7 @@ const resolver = ref(
   letter-spacing: -0.03em;
 }
 .brand-title .em {
-  color: #e89820;
+  color: var(--color-brand-accent);
 }
 .brand-tagline {
   color: rgba(215, 226, 240, 0.82);
@@ -285,7 +285,7 @@ const resolver = ref(
   color: #d7e2f0;
 }
 .brand-features iconify-icon {
-  color: #e89820;
+  color: var(--color-brand-accent);
   flex-shrink: 0;
 }
 

@@ -25,8 +25,12 @@ function pickTextColor(hex: string): string {
   return L > 0.5 ? '#0d1117' : '#ffffff'
 }
 
+// Mirrors the `--color-brand-primary` token. Kept as a parseable hex (not the
+// CSS var) because pickTextColor() does luminance math on it via parseInt.
+const BRAND_PRIMARY_HEX = '#002244'
+
 const cardBg = computed(() =>
-  props.record.card_color ? '#' + props.record.card_color : '#002244'
+  props.record.card_color ? '#' + props.record.card_color : BRAND_PRIMARY_HEX
 )
 const cardTextColor = computed(() => pickTextColor(cardBg.value))
 

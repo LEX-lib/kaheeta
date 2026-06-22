@@ -162,7 +162,7 @@ onMounted(() => {
       v-if="isIosVisible"
       class="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-3 px-4 py-3"
       :style="{
-        backgroundColor: '#002244',
+        backgroundColor: 'var(--color-brand-primary)',
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)',
       }"
       role="complementary"
@@ -206,7 +206,7 @@ onMounted(() => {
       v-else-if="installPromptEvent && !isStandalone && !_dismissed"
       class="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-3 px-4 py-3"
       :style="{
-        backgroundColor: '#002244',
+        backgroundColor: 'var(--color-brand-primary)',
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)',
       }"
       role="complementary"
