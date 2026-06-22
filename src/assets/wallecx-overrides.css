@@ -66,6 +66,20 @@
   --p-tabs-tab-active-background: transparent;
 }
 
+/* Scroll (prev/next) buttons on the mobile scrollable tablist.
+ *
+ * Aura paints them from {content.background} (near-black) with a same-color fade
+ * box-shadow, which smeared a dark "bleeding" gradient over our navy tablist.
+ * The nav-button background/shadow tokens are injected by PrimeVue at runtime at
+ * a scope closer to the button than .wallecx-root, so remapping the tokens above
+ * is shadowed. Target the button element directly instead: set the navy
+ * background + a navy fade so both blend seamlessly into the tablist. */
+.my-app-dark .wallecx-root .p-tablist-nav-button {
+  background: var(--color-surface-card);
+  box-shadow: 0 0 10px 50px
+    color-mix(in srgb, var(--color-surface-card), transparent 50%);
+}
+
 /* Phase 34 LT-01: 44×44 touch-target floor for icon-only PrimeVue buttons.
  *
  * Root cause: main.ts applies p-button-sm globally via pt.button.root, and
