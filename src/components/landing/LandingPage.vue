@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -44,6 +44,42 @@ const features = [
     desc: "Track debit and credit cards with balance and spend awareness.",
   },
 ] as const;
+
+// Floating scroll-to-top: shown only once the user has scrolled past the
+// features heading ("Everything you carry,"). A scroll listener recomputes the
+// heading's position — robust to fast/flick scrolls (an IntersectionObserver
+// with threshold 0 can miss a jump that skips straight past the element).
+const featuresTitle = ref<HTMLElement | null>(null);
+const showScrollTop = ref(false);
+let ticking = false;
+
+function updateScrollTop(): void {
+  ticking = false;
+  const el = featuresTitle.value;
+  if (el) {
+    // Visible once the heading has scrolled above the viewport top.
+    showScrollTop.value = el.getBoundingClientRect().top < 0;
+  }
+}
+
+function onScroll(): void {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(updateScrollTop);
+}
+
+function scrollToTop(): void {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+onMounted(() => {
+  window.addEventListener("scroll", onScroll, { passive: true });
+  updateScrollTop();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", onScroll);
+});
 </script>
 
 <template>
@@ -74,7 +110,7 @@ const features = [
     <section class="features section-pad" id="features">
       <div class="container">
         <p class="section-label">What's in your wallet</p>
-        <h2 class="section-title">
+        <h2 class="section-title" ref="featuresTitle">
           Everything you carry,<br />always with you.
         </h2>
         <div class="feature-grid">
@@ -123,10 +159,6 @@ const features = [
           <img src="/kaheeta-logo.svg" alt="" width="22" height="22" />
           <span>Kaheeta</span>
         </div>
-        <div class="footer-links">
-          <RouterLink :to="LOGIN">Log in</RouterLink>
-          <a href="mailto:hello@delveen.dev">Contact</a>
-        </div>
         <div class="footer-meta">
           A
           <a href="https://delveen.dev" class="delveen-link">delveen</a> product
@@ -134,6 +166,22 @@ const features = [
         </div>
       </div>
     </footer>
+
+    <!-- Floating scroll-to-top — appears once past the features heading -->
+    <button
+      type="button"
+      class="scroll-top"
+      :class="{ 'is-visible': showScrollTop }"
+      aria-label="Scroll to top"
+      @click="scrollToTop"
+    >
+      <iconify-icon
+        icon="mdi:arrow-up"
+        width="22"
+        height="22"
+        aria-hidden="true"
+      ></iconify-icon>
+    </button>
   </div>
 </template>
 
@@ -457,7 +505,7 @@ const features = [
 footer {
   background: var(--pg-bg);
   border-top: 1px solid var(--pg-line);
-  padding: 2.5rem 0;
+  padding: clamp(2.75rem, 5vw, 4rem) 0;
 }
 .footer-inner {
   display: flex;
@@ -485,13 +533,42 @@ footer {
 .delveen-link:hover {
   text-decoration: underline;
 }
-.footer-links {
-  display: flex;
-  gap: 1.5rem;
-  font-size: 0.92rem;
-  color: var(--pg-muted);
+
+/* Floating scroll-to-top — fixed lower-right, fades in once past the features
+ * heading (toggled by .is-visible from showScrollTop). Uses the brand amber /
+ * navy constants (stable in both themes) so it reads on the light page and the
+ * navy hero alike. */
+.scroll-top {
+  position: fixed;
+  right: clamp(1rem, 3vw, 1.75rem);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(1rem, 3vw, 1.75rem));
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--navy);
+  box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0.25s,
+    background 0.18s ease;
 }
-.footer-links a:hover {
-  color: var(--pg-heading);
+.scroll-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.scroll-top:hover {
+  background: var(--amber-hover, #f5b450);
 }
 </style>
