@@ -130,17 +130,10 @@ const formRef = ref<HTMLElement | null>(null)
 </template>
 
 <style scoped>
-/* Dark-mode surface overrides — extracted from ManageExpense.vue (duplicated across all 4
- * Manage dialogs in Phase 34). Consolidated here so migration plans 02–05 can remove the
- * duplicate scoped :deep blocks. */
-:deep(.my-app-dark .p-dialog),
-:deep(.my-app-dark .p-dialog .p-dialog-content) {
-  background-color: var(--color-surface-card);
-  color: var(--color-typo-body);
-}
-:deep(.my-app-dark .p-drawer),
-:deep(.my-app-dark .p-drawer .p-drawer-content) {
-  background-color: var(--color-surface-card);
-  color: var(--color-typo-body);
-}
+/* Dark-mode surface overrides for the teleported Drawer/Dialog panels live in
+ * src/assets/wallecx-overrides.css (.my-app-dark .p-drawer / .p-dialog). They
+ * CANNOT be scoped here: PrimeVue teleports both overlays to <body>, outside
+ * this component's scoped subtree, so :deep() rules never match the teleported
+ * nodes (the panel fell back to Aura near-black, bleeding against the navy
+ * action bar). Keep them global. */
 </style>

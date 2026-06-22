@@ -203,3 +203,22 @@
 .my-app-dark .wallecx-manage-actions {
   background: var(--color-surface-card);
 }
+
+/* Manage dialog surfaces (Drawer on mobile, Dialog on desktop).
+ *
+ * PrimeVue teleports both to <body>, so the scoped :deep overrides that used to
+ * live in BaseMobileDialog never matched the teleported nodes — the panels fell
+ * back to Aura's near-black {content.background}. Against the navy sticky action
+ * bar that read as a "bleeding" band. Set the dark surface globally here (these
+ * are body-level overlay classes, safe to target unscoped) so the panel is navy
+ * and the action bar blends seamlessly. The .p-drawer-content itself is
+ * transparent — the navy lives on the .p-drawer panel. */
+.my-app-dark .p-drawer {
+  background: var(--color-surface-card);
+  color: var(--color-typo-body);
+}
+.my-app-dark .p-dialog,
+.my-app-dark .p-dialog .p-dialog-content {
+  background: var(--color-surface-card);
+  color: var(--color-typo-body);
+}
