@@ -255,7 +255,12 @@ const features = [
 .hero-inner {
   position: relative;
   z-index: 1;
-  padding: clamp(2rem, 5vw, 4rem) 0 clamp(2.5rem, 6vw, 5rem);
+  /* Vertical longhands only — a `padding: V 0 V` shorthand here would clobber
+   * .container's horizontal padding (same specificity, later rule), leaving the
+   * hero content edge-to-edge on mobile (< the 760px max-width, where the
+   * centering whitespace that hides it on desktop disappears). */
+  padding-top: clamp(2rem, 5vw, 4rem);
+  padding-bottom: clamp(2.5rem, 6vw, 5rem);
   max-width: 760px;
 }
 .accent-rule {
@@ -429,7 +434,10 @@ const features = [
 }
 .cta-box {
   text-align: center;
-  padding: clamp(3.5rem, 8vw, 6rem) 0;
+  /* Vertical longhands only — see .hero-inner; this is also `.container .cta-box`
+   * so a `padding: V 0` shorthand would zero the container's horizontal padding. */
+  padding-top: clamp(3.5rem, 8vw, 6rem);
+  padding-bottom: clamp(3.5rem, 8vw, 6rem);
 }
 .cta-box h2 {
   font-size: clamp(1.9rem, 4.5vw, 3rem);
