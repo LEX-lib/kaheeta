@@ -61,11 +61,8 @@ const resolver = ref(
     <!-- Brand showcase panel -->
     <section class="brand-panel">
       <div class="brand-content">
-        <RouterLink to="/" class="brand-mark" aria-label="Kaheeta home">
-          <img src="/kaheeta-logo.svg" alt="" width="32" height="32" />
-          <span>Kaheeta</span>
-        </RouterLink>
-
+        <!-- No in-panel brand mark: the global KaheetaNavBar already shows the
+             Kaheeta logo + wordmark (and links home) directly above this panel. -->
         <div class="accent-rule"></div>
         <h1 class="brand-title">
           Your wallet,<br /><span class="em">digitized.</span>
@@ -235,16 +232,6 @@ const resolver = ref(
   max-width: 34rem;
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 2rem) clamp(1.25rem, 5vw, 2.5rem);
-}
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-  color: #ffffff;
-  text-decoration: none;
 }
 .accent-rule {
   width: 56px;
