@@ -12,7 +12,7 @@ Extract the **Wallecx** feature from Lexarium (`lex-lib.github.io`) into the sta
 |---|---|
 | **Scope** | **Full current app** — Vaccinations + Memberships + **Expenses** (charts, budgets, reports) |
 | **Branding** | **Rebrand to "Kaheeta"** — manifest name, `<title>`, theme key, `wallecx:*` localStorage prefixes, and user-facing display strings |
-| **Backend** | **Same PocketBase** — `https://lexarium-backend.fly.dev` via `VITE_API_BASE_URL` |
+| **Backend** | **Same PocketBase** — `https://api.delveen.cc` via `VITE_API_BASE_URL` |
 
 ---
 
@@ -430,7 +430,7 @@ All `.env*` are gitignored — create manually:
 
 **`.env`, `.env.development`, `.env.production`:**
 ```
-VITE_API_BASE_URL=https://lexarium-backend.fly.dev
+VITE_API_BASE_URL=https://api.delveen.cc
 ```
 
 ---
@@ -452,6 +452,6 @@ npm run build        # confirm PWA manifest (name: Kaheeta) + chunks generate
 Spot-check after build:
 - Service worker registers; "new version" prompt wording says "Kaheeta".
 - `localStorage` shows `kaheeta:theme` and `kaheeta:*` pref keys (no new `wallecx:` keys created).
-- Network tab: data calls hit `wallecx_*` collections on `lexarium-backend.fly.dev` and succeed.
+- Network tab: data calls hit `wallecx_*` collections on `api.delveen.cc` and succeed.
 - Expense reports tab renders charts (chart.js loaded).
 - PDF attachment preview + barcode/QR render.

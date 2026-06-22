@@ -41,7 +41,7 @@ This app was extracted and rebranded from a feature called "Wallecx". The string
 - **`.wallecx-*` CSS classes and `WallecxApp`/`WallecxSkeleton`/`WallecxToolbar` filenames** are internal and intentionally left un-rebranded. Don't churn them.
 - **`kaheeta:*` localStorage keys** (`kaheeta:theme`, `kaheeta:view-mode`, etc.) and all user-facing display text are the rebranded surface. New keys should use the `kaheeta:` prefix.
 
-The backend is shared with the origin project (default `VITE_API_BASE_URL=https://lexarium-backend.fly.dev`); its CORS is wildcard, so no origin allowlisting is needed.
+The backend is shared with the origin project (default `VITE_API_BASE_URL=https://api.delveen.cc`); its CORS is wildcard, so no origin allowlisting is needed.
 
 ## PocketBase data layer (`src/lib/pocketbase/`)
 
