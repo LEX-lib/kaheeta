@@ -38,6 +38,10 @@ const COLOR_OPTIONS = [
   "#5b6b80",
 ] as const;
 
+// Mutable copies for PrimeVue SelectButton's :options (rejects readonly tuples).
+const iconOptions: string[] = [...ICON_OPTIONS];
+const colorOptions: string[] = [...COLOR_OPTIONS];
+
 const baseDialogRef = ref<InstanceType<typeof BaseMobileDialog> | null>(null);
 const isSaving = ref(false);
 
@@ -162,38 +166,32 @@ async function onSubmit(): Promise<void> {
 
       <div class="flex flex-col gap-2">
         <label class="text-sm" style="color: var(--color-typo-heading)">Icon</label>
-        <div class="cl-icon-grid">
-          <button
-            v-for="ic in ICON_OPTIONS"
-            :key="ic"
-            type="button"
-            class="cl-icon-opt"
-            :class="{ 'is-sel': ic === selectedIcon }"
-            :style="{ '--cl-accent': selectedColor }"
-            :aria-label="ic"
-            :aria-pressed="ic === selectedIcon"
-            @click="selectedIcon = ic"
-          >
-            <iconify-icon :icon="ic" width="20" height="20" aria-hidden="true"></iconify-icon>
-          </button>
-        </div>
+        <SelectButton
+          v-model="selectedIcon"
+          :options="iconOptions"
+          :allow-empty="false"
+          aria-label="Icon"
+          class="cl-icon-select"
+        >
+          <template #option="{ option }">
+            <iconify-icon :icon="option" width="20" height="20" aria-hidden="true"></iconify-icon>
+          </template>
+        </SelectButton>
       </div>
 
       <div class="flex flex-col gap-2">
         <label class="text-sm" style="color: var(--color-typo-heading)">Color</label>
-        <div class="cl-color-grid">
-          <button
-            v-for="col in COLOR_OPTIONS"
-            :key="col"
-            type="button"
-            class="cl-color-opt"
-            :class="{ 'is-sel': col === selectedColor }"
-            :style="{ background: col }"
-            :aria-label="col"
-            :aria-pressed="col === selectedColor"
-            @click="selectedColor = col"
-          ></button>
-        </div>
+        <SelectButton
+          v-model="selectedColor"
+          :options="colorOptions"
+          :allow-empty="false"
+          aria-label="Color"
+          class="cl-color-select"
+        >
+          <template #option="{ option }">
+            <span class="cl-swatch" :style="{ background: option }"></span>
+          </template>
+        </SelectButton>
       </div>
 
       <div class="cl-preview">
@@ -234,43 +232,25 @@ async function onSubmit(): Promise<void> {
 </template>
 
 <style scoped>
-.cl-icon-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.5rem;
-}
-.cl-icon-opt {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 1;
-  min-height: 44px;
-  border-radius: 10px;
-  border: 1.5px solid var(--color-surface-divider);
-  background: var(--color-surface-card);
-  color: var(--color-typo-body);
-  cursor: pointer;
-}
-.cl-icon-opt.is-sel {
-  border-color: var(--cl-accent);
-  color: var(--cl-accent);
-  background: color-mix(in srgb, var(--cl-accent) 12%, transparent);
-}
-.cl-color-grid {
+/* SelectButton renders a joined segmented group by default; let the options
+ * wrap into a tile grid and round each one so it reads as a picker. */
+.cl-icon-select,
+.cl-color-select {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.4rem;
 }
-.cl-color-opt {
-  width: 36px;
-  height: 36px;
+.cl-icon-select :deep(.p-togglebutton),
+.cl-color-select :deep(.p-togglebutton) {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+}
+.cl-swatch {
+  display: block;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  border: none;
-  cursor: pointer;
-}
-.cl-color-opt.is-sel {
-  outline: 2px solid var(--color-typo-heading);
-  outline-offset: 2px;
 }
 .cl-preview {
   display: flex;

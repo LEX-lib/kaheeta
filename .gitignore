@@ -459,3 +459,6 @@ docs/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Local dev/preview server logs
+*.log

@@ -239,26 +239,32 @@ watch(
           </Button>
         </div>
 
-        <div class="cl-progress-track">
-          <div
-            class="cl-progress-fill"
-            :style="{ width: `${selectedProgress.pct}%`, background: selectedChecklist.color }"
-          ></div>
-        </div>
+        <ProgressBar
+          :value="selectedProgress.pct"
+          :show-value="false"
+          class="cl-progressbar"
+          :style="{
+            '--p-progressbar-value-background': selectedChecklist.color,
+            '--p-progressbar-height': '8px',
+            '--p-progressbar-border-radius': '99px',
+          }"
+        />
 
         <ul class="cl-tasks">
           <li v-for="t in selectedTasks" :key="t.id" class="cl-task">
-            <button
-              type="button"
-              class="cl-check"
-              :class="{ 'is-done': t.done }"
-              :style="{ '--cl-accent': selectedChecklist.color }"
-              :aria-pressed="t.done"
+            <Checkbox
+              :model-value="t.done"
+              binary
               :aria-label="t.done ? `Mark ${t.title} not done` : `Mark ${t.title} done`"
-              @click="onToggleTask(t.id)"
-            >
-              <iconify-icon icon="mdi:check-bold" width="13" height="13" aria-hidden="true"></iconify-icon>
-            </button>
+              :style="{
+                '--p-checkbox-checked-background': selectedChecklist.color,
+                '--p-checkbox-checked-border-color': selectedChecklist.color,
+                '--p-checkbox-checked-hover-background': selectedChecklist.color,
+                '--p-checkbox-checked-hover-border-color': selectedChecklist.color,
+                '--p-checkbox-checked-focus-border-color': selectedChecklist.color,
+              }"
+              @update:model-value="onToggleTask(t.id)"
+            />
             <span
               class="cl-task-title"
               :class="{ 'is-done': t.done }"
@@ -410,17 +416,8 @@ watch(
 .cl-detail-pct {
   font-weight: 700;
 }
-.cl-progress-track {
-  height: 8px;
-  border-radius: 99px;
-  background: var(--color-surface-divider);
-  overflow: hidden;
+.cl-progressbar {
   margin: 0.9rem 0 1.1rem;
-}
-.cl-progress-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.35s ease;
 }
 
 .cl-tasks {
@@ -438,33 +435,6 @@ watch(
   padding: 0.6rem 0.7rem;
   border-radius: 11px;
   background: var(--color-surface-card-2);
-}
-.cl-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 23px;
-  height: 23px;
-  border-radius: 7px;
-  border: 2px solid var(--color-typo-muted);
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-}
-.cl-check iconify-icon {
-  opacity: 0;
-  color: #ffffff;
-  transition: opacity 0.15s ease;
-}
-.cl-check.is-done {
-  background: var(--cl-accent);
-  border-color: var(--cl-accent);
-}
-.cl-check.is-done iconify-icon {
-  opacity: 1;
 }
 .cl-task-title {
   flex: 1;

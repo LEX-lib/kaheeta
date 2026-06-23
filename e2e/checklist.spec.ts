@@ -36,7 +36,7 @@ test.describe("Checklist tab", () => {
           r.method() === "PATCH" &&
           r.url().includes("/api/collections/kaheeta_checklist_tasks/records/"),
       ),
-      page.locator(".cl-task", { hasText: "Coffee" }).locator(".cl-check").click(),
+      page.locator(".cl-task", { hasText: "Coffee" }).locator(".p-checkbox").click(),
     ]);
     expect(JSON.parse(patch.postData() ?? "{}")).toMatchObject({ done: true });
     await expect(page.locator(".cl-detail-count")).toHaveText("3 of 4 done");
