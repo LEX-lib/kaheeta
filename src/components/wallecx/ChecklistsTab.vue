@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch, defineAsyncComponent } from "vue";
+import { ref, computed, watch, onMounted, defineAsyncComponent } from "vue";
 import { useConfirm } from "primevue/useconfirm";
 import { useChecklists } from "@/lib/wallecx/useChecklists";
 import type { Checklist } from "@/types/wallecx/checklists/types";
 import ProgressRing from "./ProgressRing.vue";
+import WallecxSkeleton from "./WallecxSkeleton.vue";
+import { useToast } from "@/composables/useToast";
 
 const ManageChecklist = defineAsyncComponent(() => import("./ManageChecklist.vue"));
 
@@ -11,6 +13,8 @@ const props = defineProps<{ pendingAction?: string | null }>();
 
 const {
   checklists,
+  isLoading,
+  load,
   tasksFor,
   progressFor,
   removeChecklist,
@@ -19,7 +23,17 @@ const {
   removeTask,
 } = useChecklists();
 
+const toast = useToast();
 const confirm = useConfirm();
+
+onMounted(async () => {
+  try {
+    await load();
+  } catch (e) {
+    toast.error("Failed to load checklists.");
+    console.error("ChecklistsTab: load failed", e);
+  }
+});
 
 const selectedId = ref<string | null>(checklists.value[0]?.id ?? null);
 
@@ -70,19 +84,51 @@ function confirmDeleteChecklist(c: Checklist): void {
     icon: "pi pi-exclamation-triangle",
     rejectProps: { label: "Keep", severity: "secondary", outlined: true },
     acceptProps: { label: "Delete", severity: "danger" },
-    accept: () => removeChecklist(c.id),
+    accept: async () => {
+      try {
+        await removeChecklist(c.id);
+        toast.success("Checklist deleted.");
+      } catch (e) {
+        toast.error("Couldn't delete the checklist.");
+        console.error("ChecklistsTab: removeChecklist failed", e);
+      }
+    },
   });
 }
 
 // --- quick-add task ---
 const newTaskTitle = ref("");
-function submitNewTask(): void {
+async function submitNewTask(): Promise<void> {
   const title = newTaskTitle.value.trim();
   if (!title || !selectedChecklist.value) {
     return;
   }
-  addTask(selectedChecklist.value.id, title);
   newTaskTitle.value = "";
+  try {
+    await addTask(selectedChecklist.value.id, title);
+  } catch (e) {
+    newTaskTitle.value = title; // restore on failure
+    toast.error("Couldn't add the task.");
+    console.error("ChecklistsTab: addTask failed", e);
+  }
+}
+
+async function onToggleTask(id: string): Promise<void> {
+  try {
+    await toggleTask(id);
+  } catch (e) {
+    toast.error("Couldn't update the task.");
+    console.error("ChecklistsTab: toggleTask failed", e);
+  }
+}
+
+async function onDeleteTask(id: string): Promise<void> {
+  try {
+    await removeTask(id);
+  } catch (e) {
+    toast.error("Couldn't delete the task.");
+    console.error("ChecklistsTab: removeTask failed", e);
+  }
 }
 
 // Deep-link "+ New task" shortcut → open the create dialog.
@@ -107,8 +153,11 @@ watch(
       <Button label="New checklist" icon="pi pi-plus" size="small" @click="openCreate" />
     </div>
 
+    <!-- Loading -->
+    <WallecxSkeleton v-if="isLoading" variant="checklist" :count="3" />
+
     <!-- Empty state -->
-    <div v-if="checklists.length === 0" class="cl-empty">
+    <div v-else-if="checklists.length === 0" class="cl-empty">
       <iconify-icon
         icon="mdi:checkbox-marked-outline"
         width="48"
@@ -206,14 +255,14 @@ watch(
               :style="{ '--cl-accent': selectedChecklist.color }"
               :aria-pressed="t.done"
               :aria-label="t.done ? `Mark ${t.title} not done` : `Mark ${t.title} done`"
-              @click="toggleTask(t.id)"
+              @click="onToggleTask(t.id)"
             >
               <iconify-icon icon="mdi:check-bold" width="13" height="13" aria-hidden="true"></iconify-icon>
             </button>
             <span
               class="cl-task-title"
               :class="{ 'is-done': t.done }"
-              @click="toggleTask(t.id)"
+              @click="onToggleTask(t.id)"
             >
               {{ t.title }}
             </span>
@@ -221,7 +270,7 @@ watch(
               type="button"
               class="cl-task-del"
               aria-label="Delete task"
-              @click="removeTask(t.id)"
+              @click="onDeleteTask(t.id)"
             >
               <iconify-icon icon="mdi:close" width="16" height="16" aria-hidden="true"></iconify-icon>
             </button>

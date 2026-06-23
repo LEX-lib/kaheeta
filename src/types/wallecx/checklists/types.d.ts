@@ -1,9 +1,8 @@
-// Checklist feature types.
-//
-// Storage is a local mock today (see useChecklists.ts) but the shapes mirror the
-// planned relational PocketBase collections so the swap is isolated:
+// Checklist feature types — backed by PocketBase collections:
 //   kaheeta_checklists       → Checklist
 //   kaheeta_checklist_tasks  → ChecklistTask (subtasks stored as a JSON column)
+
+import type { RecordModel } from "pocketbase";
 
 export type TaskPriority = "high" | "med" | "low";
 
@@ -13,9 +12,19 @@ export interface ChecklistSubtask {
   done: boolean;
 }
 
-export interface ChecklistTask {
-  id: string;
-  /** FK → Checklist.id */
+export interface Checklist extends RecordModel {
+  name: string;
+  /** iconify mdi:* name */
+  icon: string;
+  /** accent hex, e.g. #e89820 */
+  color: string;
+  order: number;
+  /** owner — relation to users */
+  user: string;
+}
+
+export interface ChecklistTask extends RecordModel {
+  /** relation → kaheeta_checklists.id */
   checklist: string;
   title: string;
   done: boolean;
@@ -23,19 +32,11 @@ export interface ChecklistTask {
   priority?: TaskPriority;
   /** ISO date string. Modeled for the next cut; not surfaced in the MVP UI. */
   due?: string;
-  /** JSON column on the task. Empty in the MVP. */
+  /** JSON column. Empty in the MVP. */
   subtasks: ChecklistSubtask[];
   order: number;
-}
-
-export interface Checklist {
-  id: string;
-  name: string;
-  /** iconify mdi:* name */
-  icon: string;
-  /** accent hex, e.g. #e89820 */
-  color: string;
-  order: number;
+  /** owner — relation to users */
+  user: string;
 }
 
 export interface ChecklistProgress {

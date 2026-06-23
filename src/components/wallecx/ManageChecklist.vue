@@ -91,7 +91,7 @@ function onCancel(): void {
   baseDialogRef.value?.closeWithoutGuard();
 }
 
-function onSubmit(): void {
+async function onSubmit(): Promise<void> {
   const trimmed = name.value.trim();
   if (trimmed.length < 1) {
     nameError.value = "Name is required.";
@@ -106,7 +106,7 @@ function onSubmit(): void {
   try {
     let saved: Checklist;
     if (isEditMode.value && record.value) {
-      updateChecklist(record.value.id, {
+      await updateChecklist(record.value.id, {
         name: trimmed,
         icon: selectedIcon.value,
         color: selectedColor.value,
@@ -118,7 +118,7 @@ function onSubmit(): void {
         color: selectedColor.value,
       };
     } else {
-      saved = addChecklist({
+      saved = await addChecklist({
         name: trimmed,
         icon: selectedIcon.value,
         color: selectedColor.value,
@@ -127,6 +127,9 @@ function onSubmit(): void {
     emit("saved", saved);
     toast.success(isEditMode.value ? "Checklist updated." : "Checklist created.");
     baseDialogRef.value?.closeWithoutGuard();
+  } catch (e) {
+    toast.error("Failed to save. Please try again.");
+    console.error("ManageChecklist: save failed", e);
   } finally {
     isSaving.value = false;
   }
