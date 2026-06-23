@@ -126,19 +126,6 @@ onMounted(async () => {
           <Tab value="checklists">
             <iconify-icon icon="mdi:checkbox-marked-circle-outline" width="16" height="16" aria-hidden="true"></iconify-icon>
             Checklist
-            <span
-              style="
-                margin-left: 6px;
-                font-size: 0.6rem;
-                font-weight: 800;
-                letter-spacing: 0.05em;
-                background: var(--color-brand-accent);
-                color: var(--color-brand-navy);
-                padding: 2px 6px;
-                border-radius: 999px;
-              "
-              >NEW</span
-            >
           </Tab>
         </TabList>
         <TabPanels>
