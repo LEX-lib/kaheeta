@@ -220,7 +220,8 @@ watch(
     <!-- Two-pane on desktop; mobile drills down (list OR detail, never both). -->
     <div v-else class="cl-layout">
       <!-- Rail: always on desktop; on mobile only when the detail is closed. -->
-      <div v-show="!isNarrow || !detailOpen" class="cl-rail">
+      <Transition name="cl-pane-l" :css="isNarrow">
+        <div v-show="!isNarrow || !detailOpen" class="cl-rail">
         <button
           v-for="c in checklists"
           :key="c.id"
@@ -244,14 +245,16 @@ watch(
           </span>
           <ProgressRing :pct="progressFor(c.id).pct" :color="c.color" :size="42" />
         </button>
-      </div>
+        </div>
+      </Transition>
 
       <!-- Detail: always on desktop; on mobile only when opened (drill-down). -->
-      <div
-        v-if="selectedChecklist"
-        v-show="!isNarrow || detailOpen"
-        class="cl-detail"
-      >
+      <Transition name="cl-pane-r" :css="isNarrow">
+        <div
+          v-if="selectedChecklist"
+          v-show="!isNarrow || detailOpen"
+          class="cl-detail"
+        >
         <div class="cl-detail-head">
           <button
             v-if="isNarrow"
@@ -372,7 +375,8 @@ watch(
           <InputText v-model="newTaskTitle" placeholder="Add a task…" class="flex-1 min-w-0" />
           <Button type="submit" icon="pi pi-plus" :disabled="!newTaskTitle.trim()" aria-label="Add task" />
         </form>
-      </div>
+        </div>
+      </Transition>
     </div>
 
     <Suspense>
@@ -395,11 +399,48 @@ watch(
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
+  position: relative; /* anchor for the sliding panes during the mobile transition */
+  overflow-x: clip; /* clip the horizontal slide so it never causes a scrollbar */
 }
 @media (min-width: 768px) {
   .cl-layout {
     grid-template-columns: 300px 1fr;
     align-items: start;
+  }
+}
+
+/* Mobile drill-down slide/fade (gated to mobile via :css="isNarrow"; desktop
+ * panes never toggle, so this no-ops there). The leaving pane is positioned
+ * absolutely so the entering one isn't pushed below it mid-transition. */
+.cl-pane-l-enter-active,
+.cl-pane-l-leave-active,
+.cl-pane-r-enter-active,
+.cl-pane-r-leave-active {
+  transition:
+    transform 0.26s ease,
+    opacity 0.26s ease;
+}
+.cl-pane-r-enter-from,
+.cl-pane-r-leave-to {
+  transform: translateX(24px);
+  opacity: 0;
+}
+.cl-pane-l-enter-from,
+.cl-pane-l-leave-to {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+.cl-pane-l-leave-active,
+.cl-pane-r-leave-active {
+  position: absolute;
+  inset: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cl-pane-l-enter-active,
+  .cl-pane-l-leave-active,
+  .cl-pane-r-enter-active,
+  .cl-pane-r-leave-active {
+    transition: none;
   }
 }
 
