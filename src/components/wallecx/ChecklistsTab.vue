@@ -367,7 +367,7 @@ watch(
         </ul>
 
         <form class="cl-add" @submit.prevent="submitNewTask">
-          <InputText v-model="newTaskTitle" placeholder="Add a task…" class="flex-1" />
+          <InputText v-model="newTaskTitle" placeholder="Add a task…" class="flex-1 min-w-0" />
           <Button type="submit" icon="pi pi-plus" :disabled="!newTaskTitle.trim()" aria-label="Add task" />
         </form>
       </div>

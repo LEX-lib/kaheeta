@@ -87,6 +87,12 @@ test.describe("Checklist tab — mobile drill-down", () => {
     await expect(quickAdd).toBeVisible();
     await expect(back).toBeVisible();
 
+    // Nothing (incl. the add-task row) overflows the viewport horizontally.
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+
     // Back → list view again.
     await back.click();
     await expect(quickAdd).toBeHidden();
