@@ -14,6 +14,17 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
   'Other',
 ] as const;
 
+// Mode of payment — fixed set (value + display label), shared by the form Select
+// and the expense-row badge. Stored on wallecx_expenses.payment_mode (optional).
+export const PAYMENT_MODES = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'credit', label: 'Credit card' },
+  { value: 'debit', label: 'Debit card' },
+  { value: 'ewallet', label: 'E-wallet' },
+] as const;
+
+export type PaymentMode = (typeof PAYMENT_MODES)[number]['value'];
+
 export const expenseSchema = z.object({
   amount: z.number().positive().max(99_999_999.99),
   expense_date: z.string()
@@ -22,6 +33,7 @@ export const expenseSchema = z.object({
   category: z.string().min(1).max(60),
   description: z.string().min(1).max(120),
   notes: z.string().max(2000).optional(),
+  payment_mode: z.enum(['cash', 'credit', 'debit', 'ewallet']).optional(),
   // receipt is handled separately as FormData (matches vaccinations/memberships file-field pattern)
 });
 

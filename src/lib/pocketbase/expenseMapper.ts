@@ -19,6 +19,7 @@ export function mapToUpdateExpense(record: Expenses): {
   category: string;
   description: string;
   notes?: string;
+  payment_mode?: 'cash' | 'credit' | 'debit' | 'ewallet';
 } {
   return {
     amount: record.amount,
@@ -26,5 +27,6 @@ export function mapToUpdateExpense(record: Expenses): {
     category: record.category,
     description: record.description,
     ...(record.notes !== undefined ? { notes: record.notes } : {}),
+    ...(record.payment_mode !== undefined ? { payment_mode: record.payment_mode } : {}),
   };
 }

@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { Expenses } from '@/types/wallecx/expenses/types'
 import { formatCurrency } from '@/lib/wallecx/currency'
+import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
 import dayjs from 'dayjs'
 
 defineProps<{ record: Expenses }>()
+
+function paymentModeLabel(value: string): string {
+  return PAYMENT_MODES.find((m) => m.value === value)?.label ?? value
+}
 
 const emit = defineEmits<{
   edit:    [record: Expenses]
@@ -27,6 +32,13 @@ const emit = defineEmits<{
     <div class="flex-1 min-w-0">
       <div class="text-xs" style="color: var(--color-typo-muted)">
         {{ dayjs(record.expense_date).format('D MMM YYYY') }} · {{ record.category }}
+        <span
+          v-if="record.payment_mode"
+          class="inline-block ml-1 px-2 py-0.5 rounded-full"
+          style="background: var(--color-surface-card-2); color: var(--color-typo-body)"
+        >
+          {{ paymentModeLabel(record.payment_mode) }}
+        </span>
       </div>
       <div class="text-sm truncate" style="color: var(--color-typo-body)">
         {{ record.description }}

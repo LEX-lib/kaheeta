@@ -11,6 +11,7 @@ export interface Expenses extends RecordModel {
   description: string;
   notes?: string;
   receipt?: string;       // filename returned by MaxSelect=1 file field
+  payment_mode?: 'cash' | 'credit' | 'debit' | 'ewallet';
 }
 
 export type AddExpense = Omit<Expenses, "id" | "created" | "updated">;

@@ -5,7 +5,7 @@ import { useToast } from '@/composables/useToast'
 import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { mapToUpdateExpense } from '@/lib/pocketbase/expenseMapper'
-import { expenseSchema, DEFAULT_EXPENSE_CATEGORIES } from '@/lib/wallecx/expenseSchema'
+import { expenseSchema, DEFAULT_EXPENSE_CATEGORIES, PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
 import type { Expenses } from '@/types/wallecx/expenses/types'
 import type { ExpenseCategories } from '@/types/wallecx/expense-categories/types'
 import { useMobileEnv } from '@/composables/useMobileEnv'
@@ -39,6 +39,9 @@ const dialogHeader = computed(() => (isEditMode.value ? 'Edit Expense' : 'Add Ex
 const amount = ref<number | null>(null)
 const expenseDate = ref<Date>(new Date())
 const category = ref<string>('')
+const paymentMode = ref<string>('')
+// Mutable copy for PrimeVue Select's :options (rejects the readonly const tuple).
+const paymentModeOptions = [...PAYMENT_MODES]
 const description = ref<string>('')
 const notes = ref<string>('')
 
@@ -53,6 +56,7 @@ interface ExpenseSnapshot {
   amount: number | null
   expenseDate: string
   category: string
+  paymentMode: string
   description: string
   notes: string
   hasPendingFile: boolean
@@ -68,12 +72,14 @@ watch(
       amount.value = rec.amount
       expenseDate.value = new Date(rec.expense_date)
       category.value = rec.category
+      paymentMode.value = rec.payment_mode ?? ''
       description.value = rec.description
       notes.value = rec.notes ?? ''
     } else {
       amount.value = null
       expenseDate.value = new Date()
       category.value = ''
+      paymentMode.value = ''
       description.value = ''
       notes.value = ''
     }
@@ -101,6 +107,7 @@ watch(visible, async (isOpen) => {
     amount: amount.value,
     expenseDate: expenseDate.value.toISOString(),
     category: category.value,
+    paymentMode: paymentMode.value,
     description: description.value,
     notes: notes.value,
     hasPendingFile: false,
@@ -115,6 +122,7 @@ const isDirty = computed<boolean>(() => {
     amount.value !== snapshot.value.amount ||
     expenseDate.value.toISOString() !== snapshot.value.expenseDate ||
     category.value !== snapshot.value.category ||
+    paymentMode.value !== snapshot.value.paymentMode ||
     description.value !== snapshot.value.description ||
     notes.value !== snapshot.value.notes ||
     pendingFile.value !== null
@@ -256,6 +264,7 @@ async function onSubmit(): Promise<void> {
     category: category.value,
     description: description.value,
     notes: notes.value || undefined,
+    payment_mode: paymentMode.value || undefined,
   }
 
   const result = expenseSchema.safeParse(payload)
@@ -298,6 +307,7 @@ async function onSubmit(): Promise<void> {
     formData.append('amount', String(roundedAmount))
     formData.append('expense_date', dayjs(expenseDate.value).format('YYYY-MM-DD'))
     formData.append('category', category.value)
+    if (paymentMode.value) formData.append('payment_mode', paymentMode.value)
     formData.append('description', description.value)
     if (notes.value) formData.append('notes', notes.value)
     if (pendingFile.value) formData.append('receipt', pendingFile.value)
@@ -396,6 +406,25 @@ async function onSubmit(): Promise<void> {
         <Message v-if="categoryError" severity="error" size="small" variant="simple">
           {{ categoryError }}
         </Message>
+      </div>
+
+      <!-- Payment Mode (optional, fixed Select) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">
+          Payment Mode
+          <span class="text-xs" style="color: var(--color-typo-muted)">(optional)</span>
+        </label>
+        <Select
+          v-model="paymentMode"
+          fluid
+          show-clear
+          option-label="label"
+          option-value="value"
+          :options="paymentModeOptions"
+          :disabled="isSaving"
+          placeholder="Select a payment mode"
+          enterkeyhint="next"
+        />
       </div>
 
       <!-- Description (required, char counter) -->
