@@ -6,6 +6,7 @@ import type { Checklist } from "@/types/wallecx/checklists/types";
 import ProgressRing from "./ProgressRing.vue";
 import WallecxSkeleton from "./WallecxSkeleton.vue";
 import { useToast } from "@/composables/useToast";
+import { useIsMobile } from "@/composables/useIsMobile";
 
 const ManageChecklist = defineAsyncComponent(() => import("./ManageChecklist.vue"));
 
@@ -25,6 +26,21 @@ const {
 
 const toast = useToast();
 const confirm = useConfirm();
+
+// Mobile (< md 768px) uses a drill-down: the list and the detail are shown one
+// at a time. Desktop shows both panes side by side, so detailOpen is ignored.
+const isNarrow = useIsMobile(767);
+const detailOpen = ref(false);
+
+function onSelectChecklist(id: string): void {
+  selectedId.value = id;
+  if (isNarrow.value) {
+    detailOpen.value = true;
+  }
+}
+function closeDetail(): void {
+  detailOpen.value = false;
+}
 
 onMounted(async () => {
   try {
@@ -75,6 +91,9 @@ function openEdit(c: Checklist): void {
 }
 function onSaved(c: Checklist): void {
   selectedId.value = c.id;
+  if (isNarrow.value) {
+    detailOpen.value = true; // jump into the new/edited checklist on mobile
+  }
 }
 
 function confirmDeleteChecklist(c: Checklist): void {
@@ -87,6 +106,7 @@ function confirmDeleteChecklist(c: Checklist): void {
     accept: async () => {
       try {
         await removeChecklist(c.id);
+        detailOpen.value = false; // back to the list on mobile
         toast.success("Checklist deleted.");
       } catch (e) {
         toast.error("Couldn't delete the checklist.");
@@ -168,18 +188,18 @@ watch(
       <Button label="Create your first checklist" icon="pi pi-plus" size="small" @click="openCreate" />
     </div>
 
-    <!-- Two-pane on desktop, stacked on mobile -->
+    <!-- Two-pane on desktop; mobile drills down (list OR detail, never both). -->
     <div v-else class="cl-layout">
-      <!-- Rail -->
-      <div class="cl-rail">
+      <!-- Rail: always on desktop; on mobile only when the detail is closed. -->
+      <div v-show="!isNarrow || !detailOpen" class="cl-rail">
         <button
           v-for="c in checklists"
           :key="c.id"
           type="button"
           class="cl-card"
-          :class="{ 'is-active': c.id === selectedChecklist?.id }"
+          :class="{ 'is-active': !isNarrow && c.id === selectedChecklist?.id }"
           :style="{ '--cl-accent': c.color }"
-          @click="selectedId = c.id"
+          @click="onSelectChecklist(c.id)"
         >
           <span
             class="cl-card-icon"
@@ -197,9 +217,22 @@ watch(
         </button>
       </div>
 
-      <!-- Detail -->
-      <div v-if="selectedChecklist" class="cl-detail">
+      <!-- Detail: always on desktop; on mobile only when opened (drill-down). -->
+      <div
+        v-if="selectedChecklist"
+        v-show="!isNarrow || detailOpen"
+        class="cl-detail"
+      >
         <div class="cl-detail-head">
+          <button
+            v-if="isNarrow"
+            type="button"
+            class="cl-back"
+            aria-label="Back to checklists"
+            @click="closeDetail"
+          >
+            <iconify-icon icon="mdi:arrow-left" width="20" height="20" aria-hidden="true"></iconify-icon>
+          </button>
           <span
             class="cl-card-icon"
             :style="{
@@ -399,6 +432,22 @@ watch(
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+.cl-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  color: var(--color-typo-body);
+  flex-shrink: 0;
+}
+.cl-back:hover {
+  background: var(--color-surface-card-2);
 }
 .cl-detail-meta {
   flex: 1;

@@ -58,3 +58,37 @@ test.describe("Checklist tab", () => {
     await expect(page.getByText("Travel", { exact: true }).first()).toBeVisible();
   });
 });
+
+test.describe("Checklist tab — mobile drill-down", () => {
+  test.skip(({ browserName }) => browserName !== "chromium", "Chromium only");
+  test.use({ viewport: { width: 390, height: 800 } });
+
+  test.beforeEach(async ({ page }) => {
+    await seedAuth(page);
+    await stubPocketBase(page);
+    await mockChecklistApi(page, checklistSeed());
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /checklist/i }).click();
+    await expect(page.getByText("Groceries").first()).toBeVisible();
+  });
+
+  test("shows the list only, drills into detail on tap, returns via back", async ({
+    page,
+  }) => {
+    const quickAdd = page.getByPlaceholder(/Add a task/);
+    const back = page.getByRole("button", { name: "Back to checklists" });
+
+    // List view: detail (quick-add + back) is hidden.
+    await expect(quickAdd).toBeHidden();
+    await expect(back).toBeHidden();
+
+    // Tap a checklist → detail view.
+    await page.locator(".cl-card", { hasText: "Groceries" }).click();
+    await expect(quickAdd).toBeVisible();
+    await expect(back).toBeVisible();
+
+    // Back → list view again.
+    await back.click();
+    await expect(quickAdd).toBeHidden();
+  });
+});
