@@ -277,7 +277,7 @@ async function exportJson(): Promise<void> {
     <!-- Header row: Download + Add buttons -->
     <div class="flex gap-2 mb-4 sm:justify-end">
       <Button
-        class="flex-1 sm:flex-none"
+        class="hidden sm:inline-flex sm:flex-none"
         label="Download records"
         icon="pi pi-download"
         severity="secondary"

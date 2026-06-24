@@ -229,3 +229,12 @@
 .cl-menu-danger .p-menu-item-icon {
   color: var(--color-status-error);
 }
+
+/* ConfirmDialog (delete prompts) is a centered Dialog — not the BaseMobileDialog
+ * Drawer — so on a narrow screen it stretched edge-to-edge. Cap its width so it
+ * keeps a gutter on both sides. */
+@media (max-width: 639px) {
+  .p-confirmdialog {
+    max-width: calc(100vw - 2rem);
+  }
+}

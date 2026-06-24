@@ -1,24 +1,21 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * The floating scroll-to-top button is hidden until the user scrolls past the
- * features heading (".section-title"), then returns the page to the top.
+ * Landing uses PrimeVue's <ScrollTop> (target="window", threshold 400px): the
+ * button appears after scrolling down and returns the page to the top.
  */
-test.describe("Landing scroll-to-top button", () => {
+test.describe("Landing scroll-to-top (PrimeVue ScrollTop)", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "Chromium only");
 
-  test("hidden until past the features heading, then scrolls to top", async ({
+  test("appears after scrolling, returns to top, then hides", async ({
     page,
   }) => {
     await page.goto("/");
-    const btn = page.getByRole("button", { name: "Scroll to top" });
+    const btn = page.locator(".p-scrolltop");
     await expect(btn).toBeHidden();
 
-    // Scroll the features heading above the viewport top.
-    await page.evaluate(() => {
-      document.querySelector(".section-title")?.scrollIntoView();
-      window.scrollBy(0, 500);
-    });
+    // Scroll past the threshold.
+    await page.evaluate(() => window.scrollTo(0, 900));
     await expect(btn).toBeVisible();
 
     await btn.click();
