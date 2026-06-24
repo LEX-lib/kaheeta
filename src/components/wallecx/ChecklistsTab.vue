@@ -116,6 +116,33 @@ function confirmDeleteChecklist(c: Checklist): void {
   });
 }
 
+// --- mobile actions kebab (Edit / Delete collapse into a ⋮ menu) ---
+const menuRef = ref<{ toggle: (e: Event) => void } | null>(null);
+const checklistMenuItems = computed(() => [
+  {
+    label: "Edit",
+    icon: "pi pi-pencil",
+    command: () => {
+      if (selectedChecklist.value) {
+        openEdit(selectedChecklist.value);
+      }
+    },
+  },
+  {
+    label: "Delete",
+    icon: "pi pi-trash",
+    class: "cl-menu-danger",
+    command: () => {
+      if (selectedChecklist.value) {
+        confirmDeleteChecklist(selectedChecklist.value);
+      }
+    },
+  },
+]);
+function toggleMenu(e: Event): void {
+  menuRef.value?.toggle(e);
+}
+
 // --- quick-add task ---
 const newTaskTitle = ref("");
 async function submitNewTask(): Promise<void> {
@@ -243,25 +270,44 @@ watch(
             <iconify-icon :icon="selectedChecklist.icon" width="22" height="22" aria-hidden="true"></iconify-icon>
           </span>
           <h3 class="cl-detail-name">{{ selectedChecklist.name }}</h3>
-          <Button
-            text
-            rounded
-            size="small"
-            aria-label="Edit checklist"
-            @click="openEdit(selectedChecklist)"
-          >
-            <iconify-icon icon="mdi:pencil-outline" width="18" height="18"></iconify-icon>
-          </Button>
-          <Button
-            text
-            rounded
-            severity="danger"
-            size="small"
-            aria-label="Delete checklist"
-            @click="confirmDeleteChecklist(selectedChecklist)"
-          >
-            <iconify-icon icon="mdi:trash-can-outline" width="18" height="18"></iconify-icon>
-          </Button>
+
+          <!-- Desktop: inline edit + delete (room to spare). -->
+          <template v-if="!isNarrow">
+            <Button
+              text
+              rounded
+              size="small"
+              aria-label="Edit checklist"
+              @click="openEdit(selectedChecklist)"
+            >
+              <iconify-icon icon="mdi:pencil-outline" width="18" height="18"></iconify-icon>
+            </Button>
+            <Button
+              text
+              rounded
+              severity="danger"
+              size="small"
+              aria-label="Delete checklist"
+              @click="confirmDeleteChecklist(selectedChecklist)"
+            >
+              <iconify-icon icon="mdi:trash-can-outline" width="18" height="18"></iconify-icon>
+            </Button>
+          </template>
+
+          <!-- Mobile: collapse edit + delete into a ⋮ overflow menu. -->
+          <template v-else>
+            <Button
+              text
+              rounded
+              size="small"
+              aria-label="Checklist actions"
+              aria-haspopup="true"
+              @click="toggleMenu"
+            >
+              <iconify-icon icon="mdi:dots-horizontal" width="20" height="20"></iconify-icon>
+            </Button>
+            <Menu ref="menuRef" :model="checklistMenuItems" popup />
+          </template>
         </div>
 
         <div class="cl-detail-progress-meta">
@@ -379,6 +425,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  min-width: 0; /* allow the grid track to shrink — prevents horizontal overflow */
 }
 .cl-card {
   display: flex;
@@ -428,6 +475,7 @@ watch(
   border: 1px solid var(--color-surface-divider);
   border-radius: 16px;
   padding: 1rem 1.1rem 1.1rem;
+  min-width: 0; /* allow the grid track to shrink — prevents horizontal overflow */
 }
 .cl-detail-head {
   display: flex;

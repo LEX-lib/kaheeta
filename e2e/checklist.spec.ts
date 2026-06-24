@@ -91,4 +91,17 @@ test.describe("Checklist tab — mobile drill-down", () => {
     await back.click();
     await expect(quickAdd).toBeHidden();
   });
+
+  test("collapses edit + delete into a ⋮ actions menu", async ({ page }) => {
+    await page.locator(".cl-card", { hasText: "Groceries" }).click();
+
+    // The inline edit/delete buttons are gone on mobile.
+    await expect(page.getByRole("button", { name: "Edit checklist" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Delete checklist" })).toBeHidden();
+
+    // The ⋮ menu opens Edit + Delete.
+    await page.getByRole("button", { name: "Checklist actions" }).click();
+    await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+  });
 });

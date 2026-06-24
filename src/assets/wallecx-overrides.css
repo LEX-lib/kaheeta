@@ -222,3 +222,10 @@
   background: var(--color-surface-card);
   color: var(--color-typo-body);
 }
+
+/* Checklist actions ⋮ menu: tint the Delete item. The PrimeVue Menu teleports
+ * to <body>, so this must be global (ChecklistsTab's scoped CSS can't reach it). */
+.cl-menu-danger .p-menu-item-link,
+.cl-menu-danger .p-menu-item-icon {
+  color: var(--color-status-error);
+}
