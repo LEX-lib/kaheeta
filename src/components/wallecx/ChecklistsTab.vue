@@ -192,12 +192,14 @@ watch(
 
 <template>
   <div class="checklist-tab">
-    <div class="cl-header">
-      <div>
-        <p class="cl-eyebrow">Plan · Track · Done</p>
-        <h2 class="cl-title">Checklist</h2>
-      </div>
-      <Button label="New checklist" icon="pi pi-plus" size="small" @click="openCreate" />
+    <div class="flex gap-2 mb-4 sm:justify-end">
+      <Button
+        class="flex-1 sm:flex-none"
+        label="New checklist"
+        icon="pi pi-plus"
+        size="small"
+        @click="openCreate"
+      />
     </div>
 
     <!-- Loading -->
@@ -380,26 +382,6 @@ watch(
 </template>
 
 <style scoped>
-.cl-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.cl-eyebrow {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--color-typo-muted);
-}
-.cl-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-typo-heading);
-}
 .cl-empty {
   display: flex;
   flex-direction: column;
