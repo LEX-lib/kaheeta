@@ -242,15 +242,7 @@ watch(
           >
             <iconify-icon :icon="selectedChecklist.icon" width="22" height="22" aria-hidden="true"></iconify-icon>
           </span>
-          <div class="cl-detail-meta">
-            <h3 class="cl-detail-name">{{ selectedChecklist.name }}</h3>
-            <p class="cl-detail-count">
-              {{ selectedProgress.done }} of {{ selectedProgress.total }} done
-            </p>
-          </div>
-          <span class="cl-detail-pct" :style="{ color: selectedChecklist.color }">
-            {{ selectedProgress.pct }}%
-          </span>
+          <h3 class="cl-detail-name">{{ selectedChecklist.name }}</h3>
           <Button
             text
             rounded
@@ -270,6 +262,15 @@ watch(
           >
             <iconify-icon icon="mdi:trash-can-outline" width="18" height="18"></iconify-icon>
           </Button>
+        </div>
+
+        <div class="cl-detail-progress-meta">
+          <span class="cl-detail-count">
+            {{ selectedProgress.done }} of {{ selectedProgress.total }} done
+          </span>
+          <span class="cl-detail-pct" :style="{ color: selectedChecklist.color }">
+            {{ selectedProgress.pct }}%
+          </span>
         </div>
 
         <ProgressBar
@@ -449,24 +450,33 @@ watch(
 .cl-back:hover {
   background: var(--color-surface-card-2);
 }
-.cl-detail-meta {
+.cl-detail-name {
   flex: 1;
   min-width: 0;
-}
-.cl-detail-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--color-typo-heading);
 }
+.cl-detail-progress-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
 .cl-detail-count {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--color-typo-muted);
 }
 .cl-detail-pct {
   font-weight: 700;
+  font-size: 0.95rem;
 }
 .cl-progressbar {
-  margin: 0.9rem 0 1.1rem;
+  margin: 0.45rem 0 1.1rem;
 }
 
 .cl-tasks {
