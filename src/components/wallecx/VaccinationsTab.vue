@@ -343,16 +343,18 @@ async function deleteRecord(record: Vaccinations): Promise<void> {
   <div>
     <!-- Header row: Download + Add buttons -->
     <div class="flex gap-2 mb-4 sm:justify-end">
-      <Button
-        class="hidden sm:inline-flex sm:flex-none"
-        label="Download records"
-        icon="pi pi-download"
-        size="small"
-        severity="secondary"
-        :disabled="isExporting"
-        :loading="isExporting"
-        @click="exportJson"
-      />
+      <div class="hidden sm:contents">
+        <Button
+          class="sm:flex-none"
+          label="Download records"
+          icon="pi pi-download"
+          size="small"
+          severity="secondary"
+          :disabled="isExporting"
+          :loading="isExporting"
+          @click="exportJson"
+        />
+      </div>
       <Button
         class="flex-1 sm:flex-none"
         label="Add vaccination"
