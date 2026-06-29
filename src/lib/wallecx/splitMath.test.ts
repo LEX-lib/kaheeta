@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { equalSplit } from './splitMath';
+import { equalSplit, weightedSplit } from './splitMath';
 
 const sum = (m: Record<string, number>) => Object.values(m).reduce((a, b) => a + b, 0);
 
@@ -37,6 +37,58 @@ describe('equalSplit', () => {
     for (let total = 0; total <= 100; total++) {
       for (let n = 1; n <= ids.length; n++) {
         expect(sum(equalSplit(total, ids.slice(0, n)))).toBe(total);
+      }
+    }
+  });
+});
+
+describe('weightedSplit', () => {
+  it('splits by percentage and sums exactly to the total', () => {
+    // 50% / 30% / 20% of 100.00
+    const r = weightedSplit(10000, { a: 50, b: 30, c: 20 });
+    expect(r).toEqual({ a: 5000, b: 3000, c: 2000 });
+    expect(sum(r)).toBe(10000);
+  });
+
+  it('distributes leftover cents by largest fractional remainder', () => {
+    // 100.01 split by thirds: 33.337 each → 3334/3334/3333 (two largest fracs win)
+    const r = weightedSplit(10001, { a: 1, b: 1, c: 1 });
+    expect(sum(r)).toBe(10001);
+    const vals = Object.values(r).sort((x, y) => y - x);
+    expect(vals).toEqual([3334, 3334, 3333]);
+  });
+
+  it('splits by share counts (2:1)', () => {
+    const r = weightedSplit(9000, { a: 2, b: 1 });
+    expect(r).toEqual({ a: 6000, b: 3000 });
+    expect(sum(r)).toBe(9000);
+  });
+
+  it('handles uneven share weights summing exactly', () => {
+    const r = weightedSplit(10000, { a: 1, b: 1, c: 1 }); // 33.34/33.33/33.33
+    expect(sum(r)).toBe(10000);
+    const vals = Object.values(r).sort((x, y) => y - x);
+    expect(vals).toEqual([3334, 3333, 3333]);
+  });
+
+  it('returns all-zero for non-positive total weight', () => {
+    expect(weightedSplit(10000, { a: 0, b: 0 })).toEqual({ a: 0, b: 0 });
+  });
+
+  it('returns empty for no participants', () => {
+    expect(weightedSplit(10000, {})).toEqual({});
+  });
+
+  it('sums to total across many weight/total combos', () => {
+    const weightSets: Record<string, number>[] = [
+      { a: 1, b: 2, c: 3 },
+      { a: 10, b: 20, c: 70 },
+      { a: 1, b: 1 },
+      { a: 5, b: 5, c: 5, d: 5 },
+    ];
+    for (const w of weightSets) {
+      for (let total = 0; total <= 200; total++) {
+        expect(sum(weightedSplit(total, w))).toBe(total);
       }
     }
   });

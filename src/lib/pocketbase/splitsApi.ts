@@ -71,3 +71,12 @@ export function createSplitExpense(
     body: payload,
   });
 }
+
+/**
+ * Soft-delete a split expense (or settlement) by id. The hook stamps
+ * `deleted_at` so balance recomputes exclude it. Only the expense's `added_by`
+ * or the group owner is permitted.
+ */
+export function deleteSplitExpense(expenseId: string): Promise<void> {
+  return pb.send(`/api/kaheeta/split-expenses/${expenseId}`, { method: "DELETE" });
+}
