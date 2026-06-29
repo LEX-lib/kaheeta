@@ -10,14 +10,17 @@ import {
   leaveGroup,
   deleteGroup,
   addMemberByEmail,
+  deleteSplitExpense,
 } from '@/lib/pocketbase/splitsApi'
 import type {
   Group,
   GroupMember,
   SplitExpense,
   SplitShare,
+  BalanceSummary,
 } from '@/types/wallecx/splits/types'
 import ManageSplitExpense from './ManageSplitExpense.vue'
+import SettleUpDialog from './SettleUpDialog.vue'
 
 const props = defineProps<{
   group: Group
@@ -41,6 +44,8 @@ const ledgerLoading = ref(false)
 const inviteEmail = ref('')
 const isAddingMember = ref(false)
 const showAddExpense = ref(false)
+const showSettle = ref(false)
+const settleBalance = ref<BalanceSummary | null>(null)
 
 const isOwner = computed(() => props.group.created_by === props.currentUserId)
 
@@ -107,6 +112,43 @@ onMounted(async () => {
 
 async function onExpenseSaved(): Promise<void> {
   await loadLedger()
+}
+
+function openSettle(b: BalanceSummary): void {
+  settleBalance.value = b
+  showSettle.value = true
+}
+
+async function onSettleSaved(): Promise<void> {
+  showSettle.value = false
+  await loadLedger()
+}
+
+// The expense's adder or the group owner may delete it.
+function canDeleteExpense(ex: SplitExpense): boolean {
+  return ex.added_by === props.currentUserId || isOwner.value
+}
+
+function confirmDeleteExpense(ex: SplitExpense): void {
+  confirm.require({
+    header: 'Delete expense?',
+    message: `Delete "${ex.name}"? This removes it from the group's balances.`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Keep', severity: 'secondary', outlined: true },
+    acceptProps: { label: 'Delete', severity: 'danger' },
+    accept: () => doDeleteExpense(ex),
+  })
+}
+
+async function doDeleteExpense(ex: SplitExpense): Promise<void> {
+  try {
+    await deleteSplitExpense(ex.id)
+    toast.success('Expense deleted.')
+    await loadLedger()
+  } catch (e: unknown) {
+    toast.error('Failed to delete expense. Please try again.')
+    console.error('GroupDetail: deleteSplitExpense failed', e)
+  }
 }
 
 async function copyCode(): Promise<void> {
@@ -203,7 +245,7 @@ async function doDelete(): Promise<void> {
           :key="`${b.userId}-${b.currency}`"
           class="flex items-center justify-between gap-2 text-sm"
         >
-          <span class="truncate">
+          <span class="truncate flex-1">
             <template v-if="b.amount > 0">{{ nameForUser(b.userId) }} owes you</template>
             <template v-else>You owe {{ nameForUser(b.userId) }}</template>
           </span>
@@ -213,6 +255,13 @@ async function doDelete(): Promise<void> {
           >
             {{ formatCents(Math.abs(b.amount), b.currency) }}
           </span>
+          <Button
+            label="Settle"
+            size="small"
+            severity="secondary"
+            text
+            @click="openSettle(b)"
+          />
         </li>
       </ul>
     </div>
@@ -230,8 +279,14 @@ async function doDelete(): Promise<void> {
           :key="ex.id"
           class="flex items-center justify-between gap-2"
         >
-          <div class="min-w-0">
-            <p class="truncate" style="color: var(--color-typo-heading)">{{ ex.name }}</p>
+          <div class="min-w-0 flex-1">
+            <p class="truncate" style="color: var(--color-typo-heading)">
+              {{ ex.name }}
+              <span
+                v-if="ex.split_type === 'settlement'"
+                class="text-xs opacity-60 font-normal"
+              >· settlement</span>
+            </p>
             <p class="text-xs opacity-70">
               {{ ex.expense_date?.slice(0, 10) }} · paid by {{ nameForUser(ex.paid_by) }}
             </p>
@@ -239,6 +294,16 @@ async function doDelete(): Promise<void> {
           <span class="text-sm font-medium tabular-nums whitespace-nowrap">
             {{ formatCents(ex.amount, ex.currency) }}
           </span>
+          <Button
+            v-if="canDeleteExpense(ex)"
+            icon="pi pi-trash"
+            size="small"
+            severity="danger"
+            text
+            rounded
+            aria-label="Delete expense"
+            @click="confirmDeleteExpense(ex)"
+          />
         </li>
       </ul>
     </div>
@@ -308,6 +373,17 @@ async function doDelete(): Promise<void> {
       :group="group"
       :members="members"
       @saved="onExpenseSaved"
+    />
+
+    <!-- Settle up dialog -->
+    <SettleUpDialog
+      v-if="settleBalance"
+      v-model:visible="showSettle"
+      :group="group"
+      :members="members"
+      :balance="settleBalance"
+      :current-user-id="currentUserId"
+      @saved="onSettleSaved"
     />
   </div>
 </template>
