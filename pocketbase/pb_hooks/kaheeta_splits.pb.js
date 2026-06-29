@@ -137,6 +137,19 @@ routerAdd(
     if (payerMembership.length === 0) {
       throw new BadRequestError("The payer is not a member of this group.");
     }
+    // Every share must be assigned to a member of the group.
+    for (let i = 0; i < shares.length; i++) {
+      const shareUserId = (shares[i].user || "").trim();
+      const shareMembership = $app.findRecordsByFilter(
+        "kaheeta_group_members",
+        "group = {:g} && user = {:u}",
+        "", 1, 0,
+        { g: groupId, u: shareUserId },
+      );
+      if (shareMembership.length === 0) {
+        throw new BadRequestError("A share is assigned to someone who is not a group member.");
+      }
+    }
 
     let created = null;
     try {
@@ -172,6 +185,53 @@ routerAdd(
       name: created.get("name"),
       amount: created.get("amount"),
     });
+  },
+  $apis.requireAuth(),
+);
+
+// DELETE /api/kaheeta/split-expenses/{id} — soft-delete an expense (or settlement)
+// by stamping deleted_at. Only the person who added it or the group owner may.
+// Soft delete keeps the balance recompute correct and auditable.
+routerAdd(
+  "DELETE",
+  "/api/kaheeta/split-expenses/{id}",
+  (e) => {
+    const user = e.auth;
+    const expenseId = e.request.pathValue("id");
+
+    let expense;
+    try {
+      expense = $app.findRecordById("kaheeta_split_expenses", expenseId);
+    } catch (_) {
+      throw new NotFoundError("Expense not found.");
+    }
+
+    let canDelete = expense.get("added_by") === user.id;
+    if (!canDelete) {
+      const groupId = expense.get("group");
+      if (groupId) {
+        try {
+          const group = $app.findRecordById("kaheeta_groups", groupId);
+          canDelete = group.get("created_by") === user.id;
+        } catch (_) {
+          // group missing — fall through to the forbidden check below
+        }
+      }
+    }
+    if (!canDelete) {
+      throw new ForbiddenError(
+        "Only the person who added the expense or the group owner can delete it.",
+      );
+    }
+
+    expense.set("deleted_at", new Date().toISOString());
+    try {
+      $app.save(expense);
+    } catch (err) {
+      throw new BadRequestError("Delete failed: " + (err.message || String(err)));
+    }
+
+    return e.json(200, { ok: true });
   },
   $apis.requireAuth(),
 );
