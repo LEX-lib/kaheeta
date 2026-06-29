@@ -121,15 +121,59 @@ Run as **D** — a fourth account that is **not** a member of any test group.
 
 ---
 
+# Phase 4 — settle up, split types & delete
+
+> **Prereq P-6:** the **updated** hook is deployed — `DELETE /api/kaheeta/split-expenses/{id}`
+> returns **401** (not 404) unauthenticated, and the create hook now also validates
+> that every **share user** is a group member.
+
+## G. Split types (run as a member of "Trip"; A, B, C)
+
+Each row: add an expense with the given method, then check the shares persisted and the balances.
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-T-1 | **Exact**: amount `100`, A `50`, B `30`, C `20` | Footer shows `$100.00 of $100.00 · $0.00 left`; saves; shares = 5000/3000/2000 | ☐ |
+| SPL-T-2 | Exact where parts ≠ total (e.g. 50/30/10) | Blocked: "Amounts must add up to $100.00." (footer shows the gap in red) | ☐ |
+| SPL-T-3 | **Percent**: amount `100`, A `50%`, B `25%`, C `25%` | Live preview 50/25/25; saves; shares = 5000/2500/2500 | ☐ |
+| SPL-T-4 | Percent not summing to 100 | Footer "Total …% (must be 100%)" red; submit blocked | ☐ |
+| SPL-T-5 | **Shares**: amount `100`, A `2`, B `1`, C `1` | Preview $50.00 / $25.00 / $25.00 (remainder by largest fraction); saves; sums to $100.00 | ☐ |
+| SPL-T-6 | Any split type, inspect rows | `split_type` stored matches the method; shares sum exactly to `amount` (integer cents) | ☐ |
+
+## H. Settle up
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-H-1 | With "B owes you $X": A opens the balance row → **Settle** | Dialog: "B is paying you", amount prefilled to $X | ☐ |
+| SPL-H-2 | Record settlement | Toast "Settlement recorded."; the B-owes-you balance row **disappears** (nets to 0) | ☐ |
+| SPL-H-3 | B's view after SPL-H-2 | B's "You owe A" balance is also cleared | ☐ |
+| SPL-H-4 | The feed | A `Settlement · settlement` row appears with the amount | ☐ |
+| SPL-H-5 | **Partial** settle: settle less than the full balance | Balance reduces by the settled amount (doesn't disappear) | ☐ |
+| SPL-H-6 | Try to settle **more** than owed | Blocked: "That's more than the $X owed." | ☐ |
+
+## I. Delete expense (soft delete)
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-D-1 | As the **adder**: trash icon on your expense → confirm | Toast "Expense deleted."; row leaves the feed; balances recompute | ☐ |
+| SPL-D-2 | As the **group owner**: delete an expense added by someone else | Allowed (owner override) | ☐ |
+| SPL-D-3 | As a **member who is neither adder nor owner** | No trash icon shown; and `DELETE /api/kaheeta/split-expenses/{id}` via curl → **403** | ☐ |
+| SPL-D-4 | After delete, inspect the row | `deleted_at` is set (soft delete); the row still exists but is excluded from reads/balances | ☐ |
+| SPL-D-5 | Delete a **settlement** | The cancelled balance reappears (settlement removed from recompute) | ☐ |
+
+---
+
 ## Exit-gate summary
 
-Phase 3 is **done** when:
+**Phase 3** is done when Sections **A, B, D, E** pass (see those sections).
 
-- [ ] Section A passes (create → join via code → mutual member visibility).
-- [ ] **Section B passes** — a 3-way equal split produces correct per-person,
-      per-currency balances from **all three** members' perspectives, and a
-      second expense by a different payer nets correctly.
-- [ ] Section D passes (a non-member sees nothing; the hook rejects non-members).
-- [ ] Section E passes (atomic write; shares sum to amount; integer cents).
+**Phase 4** is done when:
+
+- [ ] **Section G passes** — exact / percentage / shares each persist shares that
+      sum exactly to the amount, with mismatches blocked before submit.
+- [ ] **Section H passes** — a full settlement cancels a balance from both sides;
+      a partial settlement reduces it; over-settling is blocked.
+- [ ] **Section I passes** — the adder or owner can soft-delete; others get 403;
+      `deleted_at` is stamped and the row drops out of balances.
 
 File any ❌ with its ID and the actual vs expected result.
