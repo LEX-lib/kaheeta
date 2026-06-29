@@ -1,4 +1,8 @@
 import { pb } from "./index";
+import type {
+  CreateSplitExpensePayload,
+  CreateSplitExpenseResult,
+} from "@/types/wallecx/splits/types";
 
 /**
  * Client wrappers for the kaheeta split-feature hook routes (pb_hooks/kaheeta_splits.pb.js).
@@ -51,4 +55,19 @@ export function archiveGroup(groupId: string, archived: boolean): Promise<void> 
 
 export function deleteGroup(groupId: string): Promise<void> {
   return pb.send(`/api/kaheeta/groups/${groupId}`, { method: "DELETE" });
+}
+
+/**
+ * Create a split expense plus its participant shares atomically. The shares
+ * must sum to `payload.amount` (integer minor units) — the hook re-validates
+ * this server-side and rejects a mismatch. The caller and the payer must both
+ * be members of the group.
+ */
+export function createSplitExpense(
+  payload: CreateSplitExpensePayload,
+): Promise<CreateSplitExpenseResult> {
+  return pb.send<CreateSplitExpenseResult>("/api/kaheeta/split-expenses", {
+    method: "POST",
+    body: payload,
+  });
 }
