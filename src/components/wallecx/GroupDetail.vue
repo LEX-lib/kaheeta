@@ -1,0 +1,313 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { pb } from '@/lib/pocketbase'
+import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from 'primevue/useconfirm' // explicit — NOT auto-resolved by PrimeVueResolver
+import { computeBalances } from '@/lib/wallecx/balances'
+import { formatCents } from '@/lib/wallecx/splitFormat'
+import {
+  leaveGroup,
+  deleteGroup,
+  addMemberByEmail,
+} from '@/lib/pocketbase/splitsApi'
+import type {
+  Group,
+  GroupMember,
+  SplitExpense,
+  SplitShare,
+} from '@/types/wallecx/splits/types'
+import ManageSplitExpense from './ManageSplitExpense.vue'
+
+const props = defineProps<{
+  group: Group
+  currentUserId: string
+}>()
+
+const emit = defineEmits<{
+  left: []
+  deleted: []
+}>()
+
+const toast = useToast()
+const confirm = useConfirm()
+
+const members = ref<GroupMember[]>([])
+const membersLoading = ref(false)
+const expenses = ref<SplitExpense[]>([])
+const shares = ref<SplitShare[]>([])
+const ledgerLoading = ref(false)
+
+const inviteEmail = ref('')
+const isAddingMember = ref(false)
+const showAddExpense = ref(false)
+
+const isOwner = computed(() => props.group.created_by === props.currentUserId)
+
+function memberLabel(m: GroupMember): string {
+  return m.expand?.user?.name || m.expand?.user?.email || 'Member'
+}
+
+function nameForUser(userId: string): string {
+  const m = members.value.find((x) => x.user === userId)
+  if (m) return memberLabel(m)
+  return userId === props.currentUserId ? 'You' : 'Someone'
+}
+
+const balances = computed(() =>
+  computeBalances(expenses.value, shares.value, props.currentUserId),
+)
+
+async function loadMembers(): Promise<void> {
+  membersLoading.value = true
+  try {
+    members.value = await instrumentedGetFullList<GroupMember>('kaheeta_group_members', {
+      filter: pb.filter('group = {:g}', { g: props.group.id }),
+      expand: 'user',
+      sort: 'created',
+      requestKey: 'group-members-getFullList',
+    })
+  } catch (e: unknown) {
+    toast.error('Failed to load members.')
+    console.error('GroupDetail: loadMembers failed', e)
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+async function loadLedger(): Promise<void> {
+  ledgerLoading.value = true
+  try {
+    const [exp, shr] = await Promise.all([
+      instrumentedGetFullList<SplitExpense>('kaheeta_split_expenses', {
+        filter: pb.filter('group = {:g} && deleted_at = ""', { g: props.group.id }),
+        sort: '-expense_date,-created',
+        requestKey: 'split-expenses-getFullList',
+      }),
+      instrumentedGetFullList<SplitShare>('kaheeta_split_shares', {
+        filter: pb.filter('expense.group = {:g} && expense.deleted_at = ""', {
+          g: props.group.id,
+        }),
+        requestKey: 'split-shares-getFullList',
+      }),
+    ])
+    expenses.value = exp
+    shares.value = shr
+  } catch (e: unknown) {
+    toast.error('Failed to load expenses.')
+    console.error('GroupDetail: loadLedger failed', e)
+  } finally {
+    ledgerLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadMembers(), loadLedger()])
+})
+
+async function onExpenseSaved(): Promise<void> {
+  await loadLedger()
+}
+
+async function copyCode(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(props.group.public_id)
+    toast.success('Join code copied.')
+  } catch {
+    toast.info(`Join code: ${props.group.public_id}`)
+  }
+}
+
+async function submitAddMember(): Promise<void> {
+  const email = inviteEmail.value.trim()
+  if (!email) return
+  isAddingMember.value = true
+  try {
+    await addMemberByEmail(props.group.id, email)
+    inviteEmail.value = ''
+    await loadMembers()
+    toast.success('Member added.')
+  } catch (e: unknown) {
+    toast.error('Could not add member — they may not have a Kaheeta account.')
+    console.error('GroupDetail: addMemberByEmail failed', e)
+  } finally {
+    isAddingMember.value = false
+  }
+}
+
+function confirmLeave(): void {
+  confirm.require({
+    header: 'Leave group?',
+    message: `Leave "${props.group.name}"? You'll lose access to its expenses.`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Stay', severity: 'secondary', outlined: true },
+    acceptProps: { label: 'Leave', severity: 'danger' },
+    accept: doLeave,
+  })
+}
+
+async function doLeave(): Promise<void> {
+  try {
+    await leaveGroup(props.group.id)
+    toast.success('Left group.')
+    emit('left')
+  } catch (e: unknown) {
+    toast.error('Failed to leave. Please try again.')
+    console.error('GroupDetail: leaveGroup failed', e)
+  }
+}
+
+function confirmDelete(): void {
+  confirm.require({
+    header: 'Delete group?',
+    message: `Delete "${props.group.name}"? This removes it for everyone and cannot be undone.`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Keep', severity: 'secondary', outlined: true },
+    acceptProps: { label: 'Delete', severity: 'danger' },
+    accept: doDelete,
+  })
+}
+
+async function doDelete(): Promise<void> {
+  try {
+    await deleteGroup(props.group.id)
+    toast.success('Group deleted.')
+    emit('deleted')
+  } catch (e: unknown) {
+    toast.error('Failed to delete. Please try again.')
+    console.error('GroupDetail: deleteGroup failed', e)
+  }
+}
+</script>
+
+<template>
+  <div class="flex flex-col gap-4">
+    <!-- Balances -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-sm font-medium">Balances</p>
+        <Button
+          label="Add expense"
+          icon="pi pi-plus"
+          size="small"
+          @click="showAddExpense = true"
+        />
+      </div>
+      <div v-if="ledgerLoading" class="text-sm opacity-70">Loading…</div>
+      <p v-else-if="balances.length === 0" class="text-sm opacity-70">
+        All settled up — no outstanding balances.
+      </p>
+      <ul v-else class="flex flex-col gap-1">
+        <li
+          v-for="b in balances"
+          :key="`${b.userId}-${b.currency}`"
+          class="flex items-center justify-between gap-2 text-sm"
+        >
+          <span class="truncate">
+            <template v-if="b.amount > 0">{{ nameForUser(b.userId) }} owes you</template>
+            <template v-else>You owe {{ nameForUser(b.userId) }}</template>
+          </span>
+          <span
+            class="font-medium tabular-nums"
+            :style="{ color: b.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
+          >
+            {{ formatCents(Math.abs(b.amount), b.currency) }}
+          </span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Expense feed -->
+    <div>
+      <p class="text-sm font-medium mb-2">Expenses</p>
+      <div v-if="ledgerLoading" class="text-sm opacity-70">Loading…</div>
+      <p v-else-if="expenses.length === 0" class="text-sm opacity-70">
+        No expenses yet. Add the first one.
+      </p>
+      <ul v-else class="flex flex-col gap-2">
+        <li
+          v-for="ex in expenses"
+          :key="ex.id"
+          class="flex items-center justify-between gap-2"
+        >
+          <div class="min-w-0">
+            <p class="truncate" style="color: var(--color-typo-heading)">{{ ex.name }}</p>
+            <p class="text-xs opacity-70">
+              {{ ex.expense_date?.slice(0, 10) }} · paid by {{ nameForUser(ex.paid_by) }}
+            </p>
+          </div>
+          <span class="text-sm font-medium tabular-nums whitespace-nowrap">
+            {{ formatCents(ex.amount, ex.currency) }}
+          </span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Join code -->
+    <div class="flex items-center gap-2">
+      <div class="min-w-0 flex-1">
+        <p class="text-xs opacity-70">Join code</p>
+        <p class="font-mono truncate">{{ group.public_id }}</p>
+      </div>
+      <Button label="Copy" icon="pi pi-copy" size="small" severity="secondary" @click="copyCode" />
+    </div>
+
+    <!-- Members -->
+    <div>
+      <p class="text-sm font-medium mb-2">Members</p>
+      <div v-if="membersLoading" class="text-sm opacity-70">Loading…</div>
+      <ul v-else class="flex flex-col gap-2">
+        <li v-for="m in members" :key="m.id" class="flex items-center gap-2">
+          <iconify-icon icon="mdi:account-circle" width="22" height="22" aria-hidden="true"></iconify-icon>
+          <span class="truncate">{{ memberLabel(m) }}</span>
+          <span v-if="m.user === group.created_by" class="text-xs opacity-60">· owner</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Add member by email (owner only) -->
+    <div v-if="isOwner" class="flex items-end gap-2">
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="text-sm font-medium" for="invite-email">Add by email</label>
+        <InputText id="invite-email" v-model="inviteEmail" placeholder="name@example.com" type="email" />
+      </div>
+      <Button
+        label="Add"
+        icon="pi pi-user-plus"
+        :loading="isAddingMember"
+        :disabled="!inviteEmail.trim()"
+        @click="submitAddMember"
+      />
+    </div>
+
+    <!-- Danger actions -->
+    <div class="flex justify-end pt-2">
+      <Button
+        v-if="isOwner"
+        label="Delete group"
+        icon="pi pi-trash"
+        severity="danger"
+        outlined
+        size="small"
+        @click="confirmDelete"
+      />
+      <Button
+        v-else
+        label="Leave group"
+        icon="pi pi-sign-out"
+        severity="danger"
+        outlined
+        size="small"
+        @click="confirmLeave"
+      />
+    </div>
+
+    <!-- Add expense dialog -->
+    <ManageSplitExpense
+      v-model:visible="showAddExpense"
+      :group="group"
+      :members="members"
+      @saved="onExpenseSaved"
+    />
+  </div>
+</template>

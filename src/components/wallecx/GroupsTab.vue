@@ -3,24 +3,17 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { pb } from '@/lib/pocketbase'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
-import { useConfirm } from 'primevue/useconfirm'   // explicit — NOT auto-resolved by PrimeVueResolver
 import { useIsMobile } from '@/composables/useIsMobile'
-import type { Group, GroupMember } from '@/types/wallecx/splits/types'
-import {
-  createGroup,
-  joinGroup,
-  leaveGroup,
-  deleteGroup,
-  addMemberByEmail,
-} from '@/lib/pocketbase/splitsApi'
+import type { Group } from '@/types/wallecx/splits/types'
+import { createGroup, joinGroup } from '@/lib/pocketbase/splitsApi'
 import BaseMobileDialog from './BaseMobileDialog.vue'
 import WallecxSkeleton from './WallecxSkeleton.vue'
 import DragHandle from './DragHandle.vue'
+import GroupDetail from './GroupDetail.vue'
 
 const props = defineProps<{ pendingAction?: string | null }>()
 
 const toast = useToast()
-const confirm = useConfirm()
 const isMobile = useIsMobile()
 
 const currentUserId = computed(() => pb.authStore.record?.id ?? '')
@@ -46,14 +39,6 @@ const joinDialogRef = ref<InstanceType<typeof BaseMobileDialog> | null>(null)
 // --- Group detail drawer/dialog ---
 const selectedGroup = ref<Group | null>(null)
 const showDetail = ref(false)
-const members = ref<GroupMember[]>([])
-const membersLoading = ref(false)
-const inviteEmail = ref('')
-const isAddingMember = ref(false)
-
-const isOwner = computed(
-  () => !!selectedGroup.value && selectedGroup.value.created_by === currentUserId.value,
-)
 
 async function loadGroups(): Promise<void> {
   isLoading.value = true
@@ -67,23 +52,6 @@ async function loadGroups(): Promise<void> {
     console.error('GroupsTab: loadGroups failed', e)
   } finally {
     isLoading.value = false
-  }
-}
-
-async function loadMembers(groupId: string): Promise<void> {
-  membersLoading.value = true
-  try {
-    members.value = await instrumentedGetFullList<GroupMember>('kaheeta_group_members', {
-      filter: pb.filter('group = {:g}', { g: groupId }),
-      expand: 'user',
-      sort: 'created',
-      requestKey: 'group-members-getFullList',
-    })
-  } catch (e: unknown) {
-    toast.error('Failed to load members.')
-    console.error('GroupsTab: loadMembers failed', e)
-  } finally {
-    membersLoading.value = false
   }
 }
 
@@ -151,88 +119,16 @@ async function submitJoin(): Promise<void> {
   }
 }
 
-async function openGroup(group: Group): Promise<void> {
+function openGroup(group: Group): void {
   selectedGroup.value = group
-  inviteEmail.value = ''
   showDetail.value = true
-  await loadMembers(group.id)
 }
 
-async function copyCode(group: Group): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(group.public_id)
-    toast.success('Join code copied.')
-  } catch {
-    toast.info(`Join code: ${group.public_id}`)
-  }
-}
-
-async function submitAddMember(): Promise<void> {
-  const group = selectedGroup.value
-  const email = inviteEmail.value.trim()
-  if (!group || !email) return
-  isAddingMember.value = true
-  try {
-    await addMemberByEmail(group.id, email)
-    inviteEmail.value = ''
-    await loadMembers(group.id)
-    toast.success('Member added.')
-  } catch (e: unknown) {
-    toast.error('Could not add member — they may not have a Kaheeta account.')
-    console.error('GroupsTab: addMemberByEmail failed', e)
-  } finally {
-    isAddingMember.value = false
-  }
-}
-
-function confirmLeave(group: Group): void {
-  confirm.require({
-    header: 'Leave group?',
-    message: `Leave "${group.name}"? You'll lose access to its expenses.`,
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Stay', severity: 'secondary', outlined: true },
-    acceptProps: { label: 'Leave', severity: 'danger' },
-    accept: () => doLeave(group),
-  })
-}
-
-async function doLeave(group: Group): Promise<void> {
-  try {
-    await leaveGroup(group.id)
-    showDetail.value = false
-    await loadGroups()
-    toast.success('Left group.')
-  } catch (e: unknown) {
-    toast.error('Failed to leave. Please try again.')
-    console.error('GroupsTab: leaveGroup failed', e)
-  }
-}
-
-function confirmDelete(group: Group): void {
-  confirm.require({
-    header: 'Delete group?',
-    message: `Delete "${group.name}"? This removes it for everyone and cannot be undone.`,
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Keep', severity: 'secondary', outlined: true },
-    acceptProps: { label: 'Delete', severity: 'danger' },
-    accept: () => doDelete(group),
-  })
-}
-
-async function doDelete(group: Group): Promise<void> {
-  try {
-    await deleteGroup(group.id)
-    showDetail.value = false
-    await loadGroups()
-    toast.success('Group deleted.')
-  } catch (e: unknown) {
-    toast.error('Failed to delete. Please try again.')
-    console.error('GroupsTab: deleteGroup failed', e)
-  }
-}
-
-function memberLabel(m: GroupMember): string {
-  return m.expand?.user?.name || m.expand?.user?.email || 'Member'
+// GroupDetail emits these after a successful leave/delete; drop the group from
+// the list and close the detail view.
+async function onGroupGone(): Promise<void> {
+  showDetail.value = false
+  await loadGroups()
 }
 </script>
 
@@ -373,72 +269,14 @@ function memberLabel(m: GroupMember): string {
       :breakpoints="{ '960px': '75vw', '641px': '92vw' }"
       @hide="selectedGroup = null"
     >
-      <div v-if="selectedGroup" class="flex flex-col gap-4">
-        <!-- Join code -->
-        <div class="flex items-center gap-2">
-          <div class="min-w-0 flex-1">
-            <p class="text-xs opacity-70">Join code</p>
-            <p class="font-mono truncate">{{ selectedGroup.public_id }}</p>
-          </div>
-          <Button
-            label="Copy"
-            icon="pi pi-copy"
-            size="small"
-            severity="secondary"
-            @click="copyCode(selectedGroup)"
-          />
-        </div>
-
-        <!-- Members -->
-        <div>
-          <p class="text-sm font-medium mb-2">Members</p>
-          <div v-if="membersLoading" class="text-sm opacity-70">Loading…</div>
-          <ul v-else class="flex flex-col gap-2">
-            <li v-for="m in members" :key="m.id" class="flex items-center gap-2">
-              <iconify-icon icon="mdi:account-circle" width="22" height="22" aria-hidden="true"></iconify-icon>
-              <span class="truncate">{{ memberLabel(m) }}</span>
-              <span v-if="m.user === selectedGroup.created_by" class="text-xs opacity-60">· owner</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Add member by email (owner only) -->
-        <div v-if="isOwner" class="flex items-end gap-2">
-          <div class="flex flex-col gap-1 flex-1">
-            <label class="text-sm font-medium" for="invite-email">Add by email</label>
-            <InputText id="invite-email" v-model="inviteEmail" placeholder="name@example.com" type="email" />
-          </div>
-          <Button
-            label="Add"
-            icon="pi pi-user-plus"
-            :loading="isAddingMember"
-            :disabled="!inviteEmail.trim()"
-            @click="submitAddMember"
-          />
-        </div>
-
-        <!-- Danger actions -->
-        <div class="flex justify-end pt-2">
-          <Button
-            v-if="isOwner"
-            label="Delete group"
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            size="small"
-            @click="confirmDelete(selectedGroup)"
-          />
-          <Button
-            v-else
-            label="Leave group"
-            icon="pi pi-sign-out"
-            severity="danger"
-            outlined
-            size="small"
-            @click="confirmLeave(selectedGroup)"
-          />
-        </div>
-      </div>
+      <GroupDetail
+        v-if="selectedGroup"
+        :key="selectedGroup.id"
+        :group="selectedGroup"
+        :current-user-id="currentUserId"
+        @left="onGroupGone"
+        @deleted="onGroupGone"
+      />
     </Dialog>
 
     <!-- Group detail: mobile Drawer -->
@@ -449,72 +287,14 @@ function memberLabel(m: GroupMember): string {
           <span class="font-semibold">{{ selectedGroup?.name ?? 'Group' }}</span>
         </div>
       </template>
-      <div v-if="selectedGroup" class="flex flex-col gap-4">
-        <!-- Join code -->
-        <div class="flex items-center gap-2">
-          <div class="min-w-0 flex-1">
-            <p class="text-xs opacity-70">Join code</p>
-            <p class="font-mono truncate">{{ selectedGroup.public_id }}</p>
-          </div>
-          <Button
-            label="Copy"
-            icon="pi pi-copy"
-            size="small"
-            severity="secondary"
-            @click="copyCode(selectedGroup)"
-          />
-        </div>
-
-        <!-- Members -->
-        <div>
-          <p class="text-sm font-medium mb-2">Members</p>
-          <div v-if="membersLoading" class="text-sm opacity-70">Loading…</div>
-          <ul v-else class="flex flex-col gap-2">
-            <li v-for="m in members" :key="m.id" class="flex items-center gap-2">
-              <iconify-icon icon="mdi:account-circle" width="22" height="22" aria-hidden="true"></iconify-icon>
-              <span class="truncate">{{ memberLabel(m) }}</span>
-              <span v-if="m.user === selectedGroup.created_by" class="text-xs opacity-60">· owner</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Add member by email (owner only) -->
-        <div v-if="isOwner" class="flex items-end gap-2">
-          <div class="flex flex-col gap-1 flex-1">
-            <label class="text-sm font-medium" for="invite-email">Add by email</label>
-            <InputText id="invite-email" v-model="inviteEmail" placeholder="name@example.com" type="email" />
-          </div>
-          <Button
-            label="Add"
-            icon="pi pi-user-plus"
-            :loading="isAddingMember"
-            :disabled="!inviteEmail.trim()"
-            @click="submitAddMember"
-          />
-        </div>
-
-        <!-- Danger actions -->
-        <div class="flex justify-end pt-2">
-          <Button
-            v-if="isOwner"
-            label="Delete group"
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            size="small"
-            @click="confirmDelete(selectedGroup)"
-          />
-          <Button
-            v-else
-            label="Leave group"
-            icon="pi pi-sign-out"
-            severity="danger"
-            outlined
-            size="small"
-            @click="confirmLeave(selectedGroup)"
-          />
-        </div>
-      </div>
+      <GroupDetail
+        v-if="selectedGroup"
+        :key="selectedGroup.id"
+        :group="selectedGroup"
+        :current-user-id="currentUserId"
+        @left="onGroupGone"
+        @deleted="onGroupGone"
+      />
     </Drawer>
   </div>
 </template>
