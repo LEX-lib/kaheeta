@@ -5,12 +5,14 @@ import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from 'primevue/useconfirm' // explicit — NOT auto-resolved by PrimeVueResolver
 import { computeBalances } from '@/lib/wallecx/balances'
+import { simplifyDebts } from '@/lib/wallecx/simplifyDebts'
 import { formatCents } from '@/lib/wallecx/splitFormat'
 import {
   leaveGroup,
   deleteGroup,
   addMemberByEmail,
   deleteSplitExpense,
+  setGroupSimplify,
 } from '@/lib/pocketbase/splitsApi'
 import type {
   Group,
@@ -43,9 +45,12 @@ const ledgerLoading = ref(false)
 
 const inviteEmail = ref('')
 const isAddingMember = ref(false)
-const showAddExpense = ref(false)
+const showManage = ref(false)
+const editingExpense = ref<SplitExpense | null>(null)
 const showSettle = ref(false)
 const settleBalance = ref<BalanceSummary | null>(null)
+const simplifyOn = ref(props.group.simplify_debts)
+const isSavingSimplify = ref(false)
 
 const isOwner = computed(() => props.group.created_by === props.currentUserId)
 
@@ -60,8 +65,30 @@ function nameForUser(userId: string): string {
 }
 
 const balances = computed(() =>
-  computeBalances(expenses.value, shares.value, props.currentUserId),
+  simplifyOn.value
+    ? simplifyDebts(expenses.value, shares.value, props.currentUserId)
+    : computeBalances(expenses.value, shares.value, props.currentUserId),
 )
+
+const sharesForEditing = computed(() =>
+  editingExpense.value
+    ? shares.value.filter((s) => s.expense === editingExpense.value!.id)
+    : [],
+)
+
+async function onToggleSimplify(): Promise<void> {
+  const next = simplifyOn.value
+  isSavingSimplify.value = true
+  try {
+    await setGroupSimplify(props.group.id, next)
+  } catch (e: unknown) {
+    simplifyOn.value = !next // revert on failure
+    toast.error('Could not change debt simplification.')
+    console.error('GroupDetail: setGroupSimplify failed', e)
+  } finally {
+    isSavingSimplify.value = false
+  }
+}
 
 async function loadMembers(): Promise<void> {
   membersLoading.value = true
@@ -109,6 +136,23 @@ async function loadLedger(): Promise<void> {
 onMounted(async () => {
   await Promise.all([loadMembers(), loadLedger()])
 })
+
+function openAddExpense(): void {
+  editingExpense.value = null
+  showManage.value = true
+}
+
+// Settlements aren't editable through this form (no split inputs); they're
+// deleted + re-recorded instead.
+function canEditExpense(ex: SplitExpense): boolean {
+  if (ex.split_type === 'settlement') return false
+  return ex.added_by === props.currentUserId || isOwner.value
+}
+
+function openEditExpense(ex: SplitExpense): void {
+  editingExpense.value = ex
+  showManage.value = true
+}
 
 async function onExpenseSaved(): Promise<void> {
   await loadLedger()
@@ -226,14 +270,23 @@ async function doDelete(): Promise<void> {
   <div class="flex flex-col gap-4">
     <!-- Balances -->
     <div>
-      <div class="flex items-center justify-between mb-2">
-        <p class="text-sm font-medium">Balances</p>
-        <Button
-          label="Add expense"
-          icon="pi pi-plus"
-          size="small"
-          @click="showAddExpense = true"
-        />
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <p class="text-sm font-medium">Balances</p>
+          <label
+            v-if="isOwner"
+            class="flex items-center gap-1 text-xs opacity-80 cursor-pointer"
+          >
+            <ToggleSwitch
+              v-model="simplifyOn"
+              :disabled="isSavingSimplify"
+              @change="onToggleSimplify"
+            />
+            Simplify
+          </label>
+          <span v-else-if="simplifyOn" class="text-xs opacity-60">· simplified</span>
+        </div>
+        <Button label="Add expense" icon="pi pi-plus" size="small" @click="openAddExpense" />
       </div>
       <div v-if="ledgerLoading" class="text-sm opacity-70">Loading…</div>
       <p v-else-if="balances.length === 0" class="text-sm opacity-70">
@@ -294,6 +347,16 @@ async function doDelete(): Promise<void> {
           <span class="text-sm font-medium tabular-nums whitespace-nowrap">
             {{ formatCents(ex.amount, ex.currency) }}
           </span>
+          <Button
+            v-if="canEditExpense(ex)"
+            icon="pi pi-pencil"
+            size="small"
+            severity="secondary"
+            text
+            rounded
+            aria-label="Edit expense"
+            @click="openEditExpense(ex)"
+          />
           <Button
             v-if="canDeleteExpense(ex)"
             icon="pi pi-trash"
@@ -367,11 +430,13 @@ async function doDelete(): Promise<void> {
       />
     </div>
 
-    <!-- Add expense dialog -->
+    <!-- Add / edit expense dialog -->
     <ManageSplitExpense
-      v-model:visible="showAddExpense"
+      v-model:visible="showManage"
       :group="group"
       :members="members"
+      :expense="editingExpense"
+      :expense-shares="sharesForEditing"
       @saved="onExpenseSaved"
     />
 
