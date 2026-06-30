@@ -130,6 +130,14 @@ async function onGroupGone(): Promise<void> {
   showDetail.value = false
   await loadGroups()
 }
+
+// GroupDetail persisted the group's simplify flag; update our cached object
+// (the same reference the grid shows) so reopening reflects the new state.
+function onSimplifyChanged(value: boolean): void {
+  if (selectedGroup.value) {
+    selectedGroup.value.simplify_debts = value
+  }
+}
 </script>
 
 <template>
@@ -276,6 +284,7 @@ async function onGroupGone(): Promise<void> {
         :current-user-id="currentUserId"
         @left="onGroupGone"
         @deleted="onGroupGone"
+        @simplify-changed="onSimplifyChanged"
       />
     </Dialog>
 
@@ -294,6 +303,7 @@ async function onGroupGone(): Promise<void> {
         :current-user-id="currentUserId"
         @left="onGroupGone"
         @deleted="onGroupGone"
+        @simplify-changed="onSimplifyChanged"
       />
     </Drawer>
   </div>

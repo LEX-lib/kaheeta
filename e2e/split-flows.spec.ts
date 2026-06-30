@@ -120,6 +120,27 @@ test.describe("Split flows", () => {
     await expect(page.getByText("Bob owes you")).toBeHidden();
   });
 
+  test("Simplify toggle persists across close + reopen (SPL-J-4)", async ({ page }) => {
+    await mockSplitsApi(page); // e2e_user owns "Trip"
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    const sw = page.getByRole("switch");
+    await expect(sw).not.toBeChecked();
+    await sw.click();
+    await expect(sw).toBeChecked();
+
+    // Close the detail, then reopen the same group.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("switch")).toHaveCount(0);
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    // Toggle reflects the persisted state, not the stale default.
+    await expect(page.getByRole("switch")).toBeChecked();
+  });
+
   test("owner deleting a group closes detail and clears the list (SPL-U-4)", async ({ page }) => {
     await mockSplitsApi(page); // e2e_user owns "Trip"; empty ledger
 
