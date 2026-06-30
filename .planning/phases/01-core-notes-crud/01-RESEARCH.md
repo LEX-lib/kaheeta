@@ -709,22 +709,22 @@ nyquist_validation is enabled (config.json `workflow.nyquist_validation: true`).
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `snippet` be a PocketBase field or computed at render time?**
    - What we know: Both work. Storing at save time is faster to render.
    - What's unclear: Whether the ~150 chars of extra storage per note is acceptable on the shared backend.
-   - Recommendation: Store in DB. Simplifies the read path and avoids future problems when Phase 2 encrypts the `body` field — a pre-computed snippet will also need encryption treatment.
+   - RESOLVED: Store `snippet` as a PocketBase field, populated by `generateText()` at save time. This simplifies the read path and avoids future problems when Phase 2 encrypts the `body` field — a pre-computed snippet will also need encryption treatment. Storage overhead is negligible.
 
 2. **Should the Notes tab be added to `WallecxApp.vue` as the 6th tab, or does the 5-tab layout have a CSS constraint?**
    - What we know: The current `wallecx-main-tabs` CSS is not inspected for a max-tab count.
    - What's unclear: Whether adding a 6th tab causes the tab strip to overflow on narrow mobile screens.
-   - Recommendation: Check at implementation time; add `overflow-x: auto` scroll to `wallecx-main-tabs` if needed. PrimeVue's `Tabs` component handles horizontal overflow by default.
+   - RESOLVED: PrimeVue `<Tabs>` handles horizontal overflow natively via its built-in nav-button mechanism. The existing `.p-tablist` sticky rule in `wallecx-overrides.css` and the `.wallecx-main-tabs` container already apply `overflow-x: auto`. No additional CSS is required for the 6th tab. Confirmed by inspecting the existing wallecx-overrides.css rules documented in UI-SPEC.md §Tab Strip Overflow (6th Tab).
 
 3. **Does `useEditor` in `<script setup>` inside `BaseMobileDialog` (which mounts/unmounts) properly destroy the editor?**
    - What we know: `useEditor` automatically registers cleanup via `onBeforeUnmount` in Vue 3 `<script setup>`.
    - What's unclear: Whether `<Drawer>` uses `v-if` (true unmount) or `v-show` (hidden but not unmounted) internally in PrimeVue v4.
-   - Recommendation: Place `NoteEditor.vue` inside a `v-if` guard keyed to `visible` to force true mount/unmount. This guarantees editor lifecycle.
+   - RESOLVED: Place `<NoteEditor>` inside a `v-if="visible"` guard to force true mount/unmount regardless of PrimeVue Drawer's internal rendering strategy. This guarantees `useEditor` cleanup runs via its `onBeforeUnmount` hook. Implemented in Plan 03 Task 2.
 
 ---
 
