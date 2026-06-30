@@ -42,6 +42,24 @@ export function addMemberByEmail(groupId: string, email: string): Promise<void> 
   });
 }
 
+/** A group member with their resolved display fields (from the superuser route). */
+export interface GroupMemberInfo {
+  id: string; // membership record id
+  user: string; // users record id
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+/**
+ * List a group's members with names/emails resolved server-side. Needed because
+ * the users collection view rule is self-only, so the client can't expand other
+ * members' names directly.
+ */
+export function getGroupMembers(groupId: string): Promise<{ members: GroupMemberInfo[] }> {
+  return pb.send(`/api/kaheeta/groups/${groupId}/members`, { method: "GET" });
+}
+
 export function leaveGroup(groupId: string): Promise<void> {
   return pb.send(`/api/kaheeta/groups/${groupId}/leave`, { method: "DELETE" });
 }
