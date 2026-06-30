@@ -32,6 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   left: []
   deleted: []
+  'simplify-changed': [value: boolean]
 }>()
 
 const toast = useToast()
@@ -81,6 +82,9 @@ async function onToggleSimplify(): Promise<void> {
   isSavingSimplify.value = true
   try {
     await setGroupSimplify(props.group.id, next)
+    // Let the parent update its cached Group so reopening reflects the new
+    // state (GroupDetail re-reads props.group.simplify_debts on remount).
+    emit('simplify-changed', next)
   } catch (e: unknown) {
     simplifyOn.value = !next // revert on failure
     toast.error('Could not change debt simplification.')
