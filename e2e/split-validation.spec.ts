@@ -69,6 +69,25 @@ test.describe("Split expense — form validation", () => {
     expect(posted).toHaveLength(0);
   });
 
+  test("the per-expense currency picker is sent in the POST", async ({ page }) => {
+    const { posted } = await mockSplitsApi(page);
+    const { form, submit } = await openAddExpense(page);
+
+    await form.getByRole("spinbutton").fill("50");
+    // Editable currency Select: type a code other than the group default (PHP).
+    await page.getByPlaceholder("e.g. USD").fill("EUR");
+
+    await Promise.all([
+      page.waitForRequest(
+        (r) => r.method() === "POST" && r.url().includes("/api/kaheeta/split-expenses"),
+      ),
+      submit.click(),
+    ]);
+
+    expect(posted).toHaveLength(1);
+    expect(posted[0]!.currency).toBe("EUR");
+  });
+
   test("a valid equal split POSTs shares that sum to the amount", async ({ page }) => {
     const { posted } = await mockSplitsApi(page);
     const { form, submit } = await openAddExpense(page);
