@@ -56,11 +56,12 @@ export async function mockSplitsApi(
     created: "2026-01-01 00:00:00.000Z",
     updated: "2026-01-01 00:00:00.000Z",
   });
-  const members: Rec[] = [
-    member("m1", "e2e_user", "You"),
-    member("m2", "u_bob", "Bob"),
-    member("m3", "u_carol", "Carol"),
+  const memberInfos = [
+    { id: "m1", user: "e2e_user", name: "You" },
+    { id: "m2", user: "u_bob", name: "Bob" },
+    { id: "m3", user: "u_carol", name: "Carol" },
   ];
+  const members: Rec[] = memberInfos.map((m) => member(m.id, m.user, m.name));
 
   const expenses: Rec[] = (seed.expenses ?? []).map((e) => ({
     collectionId: "kaheeta_split_expenses",
@@ -169,6 +170,19 @@ export async function mockSplitsApi(
       return json(route, 200, { id, name: body.name, amount: body.amount });
     }
     return route.fallback();
+  });
+
+  // --- Group members hook (GET resolves names server-side) ---
+  await page.route(/\/api\/kaheeta\/groups\/[^/?]+\/members(\?|$)/, (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const body = memberInfos.map((m) => ({
+      id: m.id,
+      user: m.user,
+      name: m.name,
+      email: `${m.user}@example.com`,
+      avatar: "",
+    }));
+    return json(route, 200, { members: body });
   });
 
   // --- Group single-id ops (delete / archive) ---

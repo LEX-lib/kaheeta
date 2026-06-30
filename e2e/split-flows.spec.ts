@@ -149,6 +149,20 @@ test.describe("Split flows", () => {
     await expect(page.getByRole("switch")).toBeChecked();
   });
 
+  test("member names render via the members hook (not the 'Member' placeholder)", async ({ page }) => {
+    await mockSplitsApi(page);
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+    await expect(page.getByText("Members", { exact: true })).toBeVisible();
+
+    await expect(page.getByText("Bob", { exact: true })).toBeVisible();
+    await expect(page.getByText("Carol", { exact: true })).toBeVisible();
+    // The fallback label must NOT appear when names resolve.
+    await expect(page.getByText("Member", { exact: true })).toHaveCount(0);
+  });
+
   test("owner deleting a group closes detail and clears the list (SPL-U-4)", async ({ page }) => {
     await mockSplitsApi(page); // e2e_user owns "Trip"; empty ledger
 

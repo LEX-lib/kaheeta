@@ -14,6 +14,7 @@ import {
   addMemberByEmail,
   deleteSplitExpense,
   setGroupSimplify,
+  getGroupMembers,
 } from '@/lib/pocketbase/splitsApi'
 import type {
   Group,
@@ -153,12 +154,28 @@ async function onToggleSimplify(): Promise<void> {
 async function loadMembers(): Promise<void> {
   membersLoading.value = true
   try {
-    members.value = await instrumentedGetFullList<GroupMember>('kaheeta_group_members', {
-      filter: pb.filter('group = {:g}', { g: props.group.id }),
-      expand: 'user',
-      sort: 'created',
-      requestKey: 'group-members-getFullList',
-    })
+    // Names come from a superuser route — the users view rule is self-only, so
+    // expand: 'user' on the collection would only resolve the current user.
+    const { members: rows } = await getGroupMembers(props.group.id)
+    members.value = rows.map(
+      (m): GroupMember => ({
+        id: m.id,
+        collectionId: 'kaheeta_group_members',
+        collectionName: 'kaheeta_group_members',
+        created: '',
+        updated: '',
+        group: props.group.id,
+        user: m.user,
+        expand: {
+          user: {
+            id: m.user,
+            name: m.name || undefined,
+            email: m.email || undefined,
+            avatar: m.avatar || undefined,
+          },
+        },
+      }),
+    )
   } catch (e: unknown) {
     toast.error('Failed to load members.')
     console.error('GroupDetail: loadMembers failed', e)

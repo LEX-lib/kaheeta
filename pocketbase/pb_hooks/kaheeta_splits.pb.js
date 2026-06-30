@@ -411,6 +411,56 @@ routerAdd(
   $apis.requireAuth(),
 );
 
+// GET /api/kaheeta/groups/{id}/members — list a group's members with their
+// display names. The users collection's view rule is locked to self, so clients
+// can't expand other members' names directly; this superuser route resolves them
+// but only for callers who are themselves members (scoped to the group, not the
+// whole user directory).
+routerAdd(
+  "GET",
+  "/api/kaheeta/groups/{id}/members",
+  (e) => {
+    const user = e.auth;
+    const groupId = e.request.pathValue("id");
+
+    const callerMembership = $app.findRecordsByFilter(
+      "kaheeta_group_members",
+      "group = {:g} && user = {:u}",
+      "", 1, 0,
+      { g: groupId, u: user.id },
+    );
+    if (callerMembership.length === 0) {
+      throw new ForbiddenError("You are not a member of this group.");
+    }
+
+    const rows = $app.findRecordsByFilter(
+      "kaheeta_group_members",
+      "group = {:g}",
+      "created", 0, 0,
+      { g: groupId },
+    );
+    const members = [];
+    for (let i = 0; i < rows.length; i++) {
+      const uid = rows[i].get("user");
+      let name = "";
+      let email = "";
+      let avatar = "";
+      try {
+        const u = $app.findRecordById("users", uid);
+        name = u.get("name") || "";
+        email = u.get("email") || "";
+        avatar = u.get("avatar") || "";
+      } catch (_) {
+        // user missing — leave blank
+      }
+      members.push({ id: rows[i].id, user: uid, name: name, email: email, avatar: avatar });
+    }
+
+    return e.json(200, { members: members });
+  },
+  $apis.requireAuth(),
+);
+
 // POST /api/kaheeta/groups/{id}/members — owner adds a member by email.
 routerAdd(
   "POST",
