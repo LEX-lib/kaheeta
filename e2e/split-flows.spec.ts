@@ -129,7 +129,15 @@ test.describe("Split flows", () => {
 
     const sw = page.getByRole("switch");
     await expect(sw).not.toBeChecked();
-    await sw.click();
+
+    // Wait for the persist PATCH to settle — the simplify-changed emit (which
+    // updates the cached group) only fires after it resolves.
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.request().method() === "PATCH" && r.url().includes("/api/kaheeta/groups/"),
+      ),
+      sw.click(),
+    ]);
     await expect(sw).toBeChecked();
 
     // Close the detail, then reopen the same group.

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
 import { useToast } from '@/composables/useToast'
@@ -52,6 +53,7 @@ const showSettle = ref(false)
 const settleBalance = ref<BalanceSummary | null>(null)
 const simplifyOn = ref(props.group.simplify_debts)
 const isSavingSimplify = ref(false)
+const isExporting = ref(false)
 
 const isOwner = computed(() => props.group.created_by === props.currentUserId)
 
@@ -76,6 +78,60 @@ const sharesForEditing = computed(() =>
     ? shares.value.filter((s) => s.expense === editingExpense.value!.id)
     : [],
 )
+
+// Export the group's ledger as JSON (desktop only — the trigger is hidden on
+// mobile). Mirrors ExpensesTab's "Download records". Uses the already-loaded
+// expenses/shares/balances; no extra fetch.
+function exportJson(): void {
+  if (isExporting.value) return
+  isExporting.value = true
+  try {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      group: {
+        id: props.group.id,
+        name: props.group.name,
+        default_currency: props.group.default_currency,
+        simplify_debts: simplifyOn.value,
+      },
+      members: members.value.map((m) => ({ user: m.user, name: nameForUser(m.user) })),
+      balances: balances.value.map((b) => ({
+        user: b.userId,
+        name: nameForUser(b.userId),
+        currency: b.currency,
+        amount: b.amount, // signed cents: + they owe you, - you owe them
+      })),
+      expenses: expenses.value.map((ex) => ({
+        id: ex.id,
+        name: ex.name,
+        amount: ex.amount, // integer minor units
+        currency: ex.currency,
+        split_type: ex.split_type,
+        expense_date: ex.expense_date,
+        paid_by: nameForUser(ex.paid_by),
+        shares: shares.value
+          .filter((s) => s.expense === ex.id)
+          .map((s) => ({ user: nameForUser(s.user), amount: s.amount })),
+      })),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    const slug = props.group.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+    anchor.download = `kaheeta-${slug}-${dayjs().format('YYYY-MM-DD')}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+    toast.success('Group records exported.')
+  } catch (e: unknown) {
+    toast.error('Export failed. Please try again.')
+    console.error('GroupDetail: exportJson failed', e)
+  } finally {
+    isExporting.value = false
+  }
+}
 
 async function onToggleSimplify(): Promise<void> {
   const next = simplifyOn.value
@@ -290,7 +346,21 @@ async function doDelete(): Promise<void> {
           </label>
           <span v-else-if="simplifyOn" class="text-xs opacity-60">· simplified</span>
         </div>
-        <Button label="Add expense" icon="pi pi-plus" size="small" @click="openAddExpense" />
+        <div class="flex items-center gap-2">
+          <!-- Export is desktop-only (hidden on mobile), mirroring Expenses. -->
+          <span class="hidden sm:contents">
+            <Button
+              label="Download records"
+              icon="pi pi-download"
+              size="small"
+              severity="secondary"
+              :loading="isExporting"
+              :disabled="ledgerLoading"
+              @click="exportJson"
+            />
+          </span>
+          <Button label="Add expense" icon="pi pi-plus" size="small" @click="openAddExpense" />
+        </div>
       </div>
       <div v-if="ledgerLoading" class="text-sm opacity-70">Loading…</div>
       <p v-else-if="balances.length === 0" class="text-sm opacity-70">
