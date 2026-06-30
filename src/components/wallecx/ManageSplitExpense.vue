@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { useToast } from '@/composables/useToast'
 import { equalSplit, weightedSplit } from '@/lib/wallecx/splitMath'
-import { formatCents } from '@/lib/wallecx/splitFormat'
+import { formatCents, COMMON_CURRENCIES } from '@/lib/wallecx/splitFormat'
 import { createSplitExpense, updateSplitExpense } from '@/lib/pocketbase/splitsApi'
 import type {
   Group,
@@ -35,7 +35,10 @@ const baseDialogRef = ref<InstanceType<typeof BaseMobileDialog> | null>(null)
 const isSaving = ref(false)
 
 const currentUserId = computed(() => pb.authStore.record?.id ?? '')
-const currency = computed(() => props.group.default_currency || 'USD')
+// Per-expense currency (editable). Defaults to the group's currency; the Select
+// is editable so any ISO code can be typed.
+const currency = ref('USD')
+const currencyOptions = COMMON_CURRENCIES.map((c) => ({ label: c, value: c }))
 
 type FormSplitType = Extract<SplitType, 'equal' | 'exact' | 'percentage' | 'share'>
 const SPLIT_TYPE_OPTIONS: Array<{ label: string; value: FormSplitType }> = [
@@ -139,6 +142,7 @@ watch(visible, (isOpen) => {
     amount.value = ex.amount / 100
     expenseDate.value = ex.expense_date ? new Date(ex.expense_date) : new Date()
     paidBy.value = ex.paid_by
+    currency.value = ex.currency || props.group.default_currency || 'USD'
     splitType.value = 'exact'
     selectedParticipants.value = exShares.map((s) => s.user)
     const exact: Record<string, number | null> = {}
@@ -152,6 +156,7 @@ watch(visible, (isOpen) => {
   amount.value = null
   expenseDate.value = new Date()
   paidBy.value = currentUserId.value || props.members[0]?.user || ''
+  currency.value = props.group.default_currency || 'USD'
   splitType.value = 'equal'
   selectedParticipants.value = props.members.map((m) => m.user)
 })
@@ -277,6 +282,21 @@ function onCancel(): void {
             autocomplete="off"
           />
         </div>
+      </div>
+
+      <!-- Currency (per expense; editable) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">Currency *</label>
+        <Select
+          v-model="currency"
+          fluid
+          editable
+          option-label="label"
+          option-value="value"
+          :options="currencyOptions"
+          :disabled="isSaving"
+          placeholder="e.g. USD"
+        />
       </div>
 
       <!-- Date -->
