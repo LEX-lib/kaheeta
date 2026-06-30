@@ -203,6 +203,28 @@ You 50, You owe Carol 50 (you net zero).
 
 ---
 
+# Phase 6 — per-expense currency & group export
+
+## M. Per-expense currency picker
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-M6-1 | Add expense → the **Currency** field | Defaults to the group's currency; editable Select with common codes + free text | ☐ |
+| SPL-M6-2 | Pick/type a different currency (e.g. EUR) and save | Expense stored with that currency; amount prefix + preview show it | ☐ |
+| SPL-M6-3 | Add a second expense in another currency | Balances list **each currency on its own row**, never summed (closes L) | ☐ |
+| SPL-M6-4 | With Simplify on across two currencies | Simplification runs **per currency** | ☐ |
+| SPL-M6-5 | Edit an expense | Currency prefills from the stored value | ☐ |
+
+## N. Group export (desktop only)
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-N-1 | Open a group on **desktop** | A "Download records" button shows next to Add expense | ☐ |
+| SPL-N-2 | Click it | Downloads `kaheeta-<group>-<date>.json` with group meta, members, balances, and expenses+shares | ☐ |
+| SPL-N-3 | Open a group on **mobile** | **No** Download records button (hidden, mirroring Expenses) | ☐ |
+
+---
+
 ## Exit-gate summary
 
 **Phase 3** is done when Sections **A, B, D, E** pass (see those sections).
@@ -223,5 +245,11 @@ You 50, You owe Carol 50 (you net zero).
 - [ ] **Section K passes** — adder/owner can edit (atomic share replace, sum
       re-validated); others get 403; settlements aren't editable.
 - [ ] **Section L passes** — currencies stay separate; simplify runs per currency.
+
+**Phase 6** is done when:
+
+- [ ] **Section M passes** — per-expense currency picker (default group currency,
+      editable); mixed currencies render as separate balance rows.
+- [ ] **Section N passes** — desktop export downloads the group JSON; hidden on mobile.
 
 File any ❌ with its ID and the actual vs expected result.

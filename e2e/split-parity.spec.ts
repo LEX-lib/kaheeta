@@ -34,6 +34,16 @@ test.describe("Split group detail — viewport parity", () => {
     await expect(page.locator(".p-drawer")).toHaveCount(0);
   });
 
+  test("desktop shows Download records and it triggers a JSON download", async ({ page }) => {
+    await openTrip(page);
+    const btn = page.getByRole("button", { name: "Download records" });
+    await expect(btn).toBeVisible();
+
+    const [download] = await Promise.all([page.waitForEvent("download"), btn.click()]);
+    expect(download.suggestedFilename()).toContain("kaheeta-trip");
+    expect(download.suggestedFilename()).toMatch(/\.json$/);
+  });
+
   test.describe("mobile", () => {
     test.use({ viewport: { width: 390, height: 800 } });
 
@@ -44,6 +54,11 @@ test.describe("Split group detail — viewport parity", () => {
       await expect(drawer).toBeVisible();
       await expect(page.locator(".p-drawer-bottom")).toBeVisible();
       await expect(page.locator(".p-dialog")).toHaveCount(0);
+    });
+
+    test("Download records is hidden on mobile", async ({ page }) => {
+      await openTrip(page);
+      await expect(page.getByRole("button", { name: "Download records" })).toHaveCount(0);
     });
 
     test("add-expense inputs are ≥16px (iOS no-zoom)", async ({ page }) => {
