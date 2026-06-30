@@ -149,7 +149,7 @@ Each row: add an expense with the given method, then check the shares persisted 
 | SPL-H-3 | B's view after SPL-H-2 | B's "You owe A" balance is also cleared | ☐ |
 | SPL-H-4 | The feed | A `Settlement · settlement` row appears with the amount | ☐ |
 | SPL-H-5 | **Partial** settle: settle less than the full balance | Balance reduces by the settled amount (doesn't disappear) | ☐ |
-| SPL-H-6 | Try to settle **more** than owed | Blocked: "That's more than the $X owed." | ☐ |
+| SPL-H-6 | Try to settle **more** than owed | The amount field **auto-clamps** to the owed amount (can't exceed it); the submit-time "more than owed" toast is an unreachable backstop | ☐ |
 
 ## I. Delete expense (soft delete)
 
