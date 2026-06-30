@@ -92,6 +92,12 @@ export default defineConfig({
               { src: 'shortcuts/shortcut-open-reports.png', sizes: '96x96', type: 'image/png' },
             ],
           },
+          {
+            name: 'Open Notes',
+            short_name: 'Notes',
+            url: '/?action=open-notes',
+            icons: [{ src: 'shortcuts/shortcut-open-notes.png', sizes: '96x96', type: 'image/png' }],
+          },
         ],
       },
       workbox: {

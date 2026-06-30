@@ -15,7 +15,8 @@ const VaccinationsTab = defineAsyncComponent(() => import("./VaccinationsTab.vue
 const MembershipsTab = defineAsyncComponent(() => import("./MembershipsTab.vue"));
 const ExpensesTab = defineAsyncComponent(() => import("./ExpensesTab.vue"));
 const ChecklistsTab = defineAsyncComponent(() => import("./ChecklistsTab.vue"));
-const GroupsTab = defineAsyncComponent(() => import("./GroupsTab.vue"));
+const GroupsTab = defineAsyncComponent(() => import("./GroupsTab.vue"))
+const NotesTab = defineAsyncComponent(() => import("./NotesTab.vue"));
 
 const route = useRoute();
 const router = useRouter();
@@ -29,6 +30,7 @@ const ACTION_TAB_MAP: Record<string, string> = {
   'add-checklist': 'checklists',
   'open-reports': 'expenses',
   'create-group': 'groups',
+  'open-notes': 'notes',
 };
 
 function isIosSafari(): boolean {
@@ -133,6 +135,10 @@ onMounted(async () => {
             <iconify-icon icon="mdi:account-group" width="16" height="16" aria-hidden="true"></iconify-icon>
             Groups
           </Tab>
+          <Tab value="notes">
+            <iconify-icon icon="mdi:note-text-outline" width="16" height="16" aria-hidden="true"></iconify-icon>
+            Notes
+          </Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="vaccinations">
@@ -172,6 +178,14 @@ onMounted(async () => {
               <GroupsTab :pending-action="pendingAction" />
               <template #fallback>
                 <WallecxSkeleton variant="membership-card" :count="3" />
+              </template>
+            </Suspense>
+          </TabPanel>
+          <TabPanel value="notes">
+            <Suspense>
+              <NotesTab />
+              <template #fallback>
+                <WallecxSkeleton variant="note-row" :count="3" />
               </template>
             </Suspense>
           </TabPanel>
