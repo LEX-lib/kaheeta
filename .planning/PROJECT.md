@@ -54,7 +54,7 @@ Users can capture private, richly-formatted notes knowing the server stores only
 **Encryption design decision:**
 Use the Web Crypto API (built into all modern browsers). On first note create, derive a 256-bit AES-GCM key from the user's PocketBase auth token via PBKDF2 + a per-user salt stored in PocketBase. Encrypt each note's body before write; decrypt after read. The user never enters a separate password. If auth token rotates, re-derive and re-encrypt — handle transparently.
 
-**WYSIWYG editor:** TBD from research — targeting lightweight Vue 3-native editor (< 50KB gzipped). Tiptap is the leading candidate.
+**WYSIWYG editor:** **Tiptap** (`@tiptap/vue-3`). Headless architecture means the toolbar is built from existing PrimeVue Buttons — zero CSS collision with Tailwind/Aura. JSON output is ideal for encrypt-then-store. Install only needed extensions (`bold`, `italic`, `heading`, `bullet-list`, `link`) to stay ~80–90KB gzipped. Use `BubbleMenu` on iOS to avoid virtual keyboard positioning issues. Full comparison: `.planning/research/WYSIWYG-EDITORS.md`
 
 ## Constraints
 
@@ -72,7 +72,7 @@ Use the Web Crypto API (built into all modern browsers). On first note create, d
 | PBKDF2 key derivation from session token | Transparent to user (no second password); tied to auth lifecycle | — Pending |
 | Flat list v1 (no folders/tags) | Minimal scope; Apple Notes users often use search over folders anyway | — Pending |
 | Notes standalone section (not embedded in other features) | Reduces scope; cross-feature linking can be added later without refactoring | — Pending |
-| WYSIWYG editor choice | TBD — awaiting research findings | — Pending |
+| Tiptap as WYSIWYG editor | Headless (no CSS collision), JSON output (clean for encryption), Vue 3-native, actively maintained. Quill considered but Delta format less suitable for encryption + dark-mode fight | — Pending |
 
 ## Evolution
 
