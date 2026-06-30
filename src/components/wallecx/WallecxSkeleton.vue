@@ -1,6 +1,6 @@
 <script setup lang="ts">
 interface Props {
-  variant: 'vaccination-card' | 'membership-card' | 'expense-row' | 'reports-chart' | 'attachment' | 'checklist'
+  variant: 'vaccination-card' | 'membership-card' | 'expense-row' | 'reports-chart' | 'attachment' | 'checklist' | 'note-row'
   count?: number
 }
 const props = withDefaults(defineProps<Props>(), { count: 1 })
@@ -49,5 +49,10 @@ const props = withDefaults(defineProps<Props>(), { count: 1 })
   <div v-else-if="props.variant === 'attachment'" class="flex flex-col items-center py-6 gap-2">
     <Skeleton height="12rem" class="w-full" />
     <p class="text-sm" style="color: var(--color-typo-muted)">Loading…</p>
+  </div>
+
+  <!-- note-row → flat list of note card skeletons (64px height approximates title + date + snippet) -->
+  <div v-else-if="props.variant === 'note-row'" class="flex flex-col gap-2">
+    <Skeleton v-for="i in props.count" :key="i" height="4rem" class="w-full rounded" />
   </div>
 </template>
