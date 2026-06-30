@@ -38,7 +38,7 @@ Plans:
 - [x] 01-PLAN-01.md — PocketBase collection schema (user_setup) + Note type definition + notesMapper + Wave 0 tests
 - [x] 01-PLAN-02.md — Tiptap v3 package install + useAutoSave composable + NoteEditor.vue + WallecxSkeleton note-row variant + CSS
 - [x] 01-PLAN-03.md — NotesTab.vue (list, empty state, delete) + ManageNote.vue (create/edit, auto-save, dirty guard)
-- [ ] 01-PLAN-04.md — WallecxApp.vue tab registration + vite.config.ts PWA shortcut + human-verify checkpoint
+- [x] 01-PLAN-04.md — WallecxApp.vue tab registration + vite.config.ts PWA shortcut + human-verify checkpoint
 
 **UI hint:** yes
 
@@ -91,7 +91,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Notes CRUD | 3/4 | In progress | - |
+| 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
 | 2. Encryption Layer | 0/3 | Not started | - |
 | 3. Title Search | 0/2 | Not started | - |
 

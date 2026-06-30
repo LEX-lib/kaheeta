@@ -49,7 +49,7 @@ Plans:
 - [x] Plan 1 — PocketBase collection + data layer
 - [x] Plan 2 — Tiptap editor component
 - [x] Plan 3 — Notes list + CRUD shell
-- [ ] Plan 4 — Navigation wiring
+- [x] Plan 4 — Navigation wiring
 
 ## Key Decisions Locked
 
@@ -62,4 +62,4 @@ Plans:
 
 ## Next Step
 
-Execute Plan 4 — Navigation wiring (WallecxApp.vue tab + PWA shortcut).
+Phase 1 execution complete (4/4 plans). Run phase verification.
