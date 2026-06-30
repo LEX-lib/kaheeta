@@ -46,8 +46,8 @@ Goal: Users can create, view, edit, and delete notes with a rich-text editor, se
 
 Plans:
 
-- [ ] Plan 1 — PocketBase collection + data layer
-- [ ] Plan 2 — Tiptap editor component
+- [x] Plan 1 — PocketBase collection + data layer
+- [x] Plan 2 — Tiptap editor component
 - [ ] Plan 3 — Notes list + CRUD shell
 - [ ] Plan 4 — Navigation wiring
 
