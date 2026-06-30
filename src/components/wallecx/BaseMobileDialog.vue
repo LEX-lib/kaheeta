@@ -10,6 +10,12 @@ const props = defineProps<{
   isSaving: boolean
 }>()
 
+const emit = defineEmits<{
+  // Fired when the user explicitly confirms "Discard" on the dirty-guard. Lets
+  // children drop any pending auto-save before they unmount (CR-01).
+  discard: []
+}>()
+
 const visible = defineModel<boolean>('visible', { required: true })
 const { isMobile } = useMobileEnv()
 const confirm = useConfirm()
@@ -53,6 +59,10 @@ function onBeforeHide(): void {
     rejectLabel: 'Keep editing',
     acceptClass: 'p-button-danger',
     accept: () => {
+      // Signal the discard BEFORE the close so children can cancel a pending
+      // auto-save (their onBeforeUnmount flush would otherwise persist it). The
+      // emit is synchronous, so it runs before the unmount that visible=false drives.
+      emit('discard')
       visible.value = false
     },
   })

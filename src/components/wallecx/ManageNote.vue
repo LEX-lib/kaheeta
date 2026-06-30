@@ -88,11 +88,22 @@ async function saveFn(): Promise<void> {
   }
 }
 
-const { status, trigger, flush } = useAutoSave(saveFn, 1000)
+const { status, trigger, flush, cancel } = useAutoSave(saveFn, 1000)
 
-// Flush pending debounce before unmount to prevent last-keystroke data loss (Pitfall 7)
+// CR-01: when the user confirms "Discard changes?", drop the pending save so the
+// onBeforeUnmount flush below does not persist the discarded edit.
+let discarded = false
+function onDiscard(): void {
+  discarded = true
+  cancel()
+}
+
+// Flush pending debounce before unmount to prevent last-keystroke data loss
+// (Pitfall 7) — unless the close was an explicit discard.
 onBeforeUnmount(() => {
-  flush()
+  if (!discarded) {
+    flush()
+  }
 })
 
 // Auto-save status display text
@@ -130,6 +141,7 @@ const statusColor = computed(() => {
     :title="isNew ? 'New Note' : 'Edit Note'"
     :is-dirty="status === 'pending' || status === 'saving'"
     :is-saving="status === 'saving'"
+    @discard="onDiscard"
   >
     <!-- Auto-save status indicator -->
     <span
