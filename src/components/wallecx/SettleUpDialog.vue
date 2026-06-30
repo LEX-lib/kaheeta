@@ -47,13 +47,19 @@ const amountCents = computed(() => Math.round((amount.value ?? 0) * 100))
 
 const isDirty = computed(() => amountCents.value !== fullCents.value)
 
-watch(visible, (isOpen) => {
-  if (!isOpen) {
-    isSaving.value = false
-    return
-  }
-  amount.value = fullCents.value / 100
-})
+// immediate: the dialog is mounted on demand (v-if) with visible already true,
+// so a plain watcher would miss that initial open and never prefill the amount.
+watch(
+  visible,
+  (isOpen) => {
+    if (!isOpen) {
+      isSaving.value = false
+      return
+    }
+    amount.value = fullCents.value / 100
+  },
+  { immediate: true },
+)
 
 async function onSubmit(): Promise<void> {
   if (amountCents.value <= 0) {
