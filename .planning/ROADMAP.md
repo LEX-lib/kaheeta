@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Core Notes CRUD** — Users can create, read, update, and delete richly-formatted notes from the wallet nav
+- [x] **Phase 1: Core Notes CRUD** — Users can create, read, update, and delete richly-formatted notes from the wallet nav
 - [ ] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
 - [ ] **Phase 3: Title Search** — Users can instantly filter their notes list by title
 
@@ -101,13 +101,13 @@ Plans:
 
 | Requirement | Description | Phase | Status |
 |-------------|-------------|-------|--------|
-| NOTE-01 | Create note with title and rich-text body (Tiptap) | Phase 1 | Pending |
-| NOTE-02 | Open and edit an existing note | Phase 1 | Pending |
-| NOTE-03 | Delete a note with confirmation dialog | Phase 1 | Pending |
-| NOTE-04 | Note changes auto-save — no explicit save button | Phase 1 | Pending |
-| LIST-01 | Flat list sorted by last-modified (newest first) | Phase 1 | Pending |
-| LIST-02 | List item shows title, created date, plaintext preview | Phase 1 | Pending |
-| NAV-01 | Notes section accessible from main wallet nav | Phase 1 | Pending |
+| NOTE-01 | Create note with title and rich-text body (Tiptap) | Phase 1 | Done |
+| NOTE-02 | Open and edit an existing note | Phase 1 | Done |
+| NOTE-03 | Delete a note with confirmation dialog | Phase 1 | Done |
+| NOTE-04 | Note changes auto-save — no explicit save button | Phase 1 | Done |
+| LIST-01 | Flat list sorted by last-modified (newest first) | Phase 1 | Done |
+| LIST-02 | List item shows title, created date, plaintext preview | Phase 1 | Done |
+| NAV-01 | Notes section accessible from main wallet nav | Phase 1 | Done |
 | ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | Pending |
 | ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Pending |
 | ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Pending |
