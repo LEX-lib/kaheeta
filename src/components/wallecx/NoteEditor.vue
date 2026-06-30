@@ -55,9 +55,11 @@ watch(
     if (!editor.value) return
     const current = editor.value.getJSON()
     const incoming = val ?? null
-    // Only call setContent if the incoming value differs from current editor content
+    // Only call setContent if the incoming value differs from current editor content.
+    // Tiptap v3: second arg is SetContentOptions; emitUpdate:false prevents the
+    // programmatic load from firing onUpdate → emit → a phantom auto-save (Pitfall 2).
     if (JSON.stringify(current) !== JSON.stringify(incoming)) {
-      editor.value.commands.setContent(incoming, false)
+      editor.value.commands.setContent(incoming, { emitUpdate: false })
     }
   },
 )
@@ -172,35 +174,39 @@ function promptLink() {
     </Button>
   </div>
 
-  <!-- BubbleMenu: shown on text selection -->
+  <!-- BubbleMenu: shown on text selection.
+       Tiptap v3 renders an unstyled positioned container, so the visible
+       chrome (surface, border, shadow) lives on the inner .note-bubble-menu. -->
   <BubbleMenu v-if="editor" :editor="editor">
-    <Button
-      text
-      size="small"
-      :severity="editor.isActive('bold') ? 'primary' : 'secondary'"
-      aria-label="Bold"
-      @click="editor.chain().focus().toggleBold().run()"
-    >
-      <iconify-icon icon="mdi:format-bold" width="18" height="18" aria-hidden="true" />
-    </Button>
-    <Button
-      text
-      size="small"
-      :severity="editor.isActive('italic') ? 'primary' : 'secondary'"
-      aria-label="Italic"
-      @click="editor.chain().focus().toggleItalic().run()"
-    >
-      <iconify-icon icon="mdi:format-italic" width="18" height="18" aria-hidden="true" />
-    </Button>
-    <Button
-      text
-      size="small"
-      :severity="editor.isActive('link') ? 'primary' : 'secondary'"
-      aria-label="Insert link"
-      @click="promptLink()"
-    >
-      <iconify-icon icon="mdi:link-variant" width="18" height="18" aria-hidden="true" />
-    </Button>
+    <div class="note-bubble-menu">
+      <Button
+        text
+        size="small"
+        :severity="editor.isActive('bold') ? 'primary' : 'secondary'"
+        aria-label="Bold"
+        @click="editor.chain().focus().toggleBold().run()"
+      >
+        <iconify-icon icon="mdi:format-bold" width="18" height="18" aria-hidden="true" />
+      </Button>
+      <Button
+        text
+        size="small"
+        :severity="editor.isActive('italic') ? 'primary' : 'secondary'"
+        aria-label="Italic"
+        @click="editor.chain().focus().toggleItalic().run()"
+      >
+        <iconify-icon icon="mdi:format-italic" width="18" height="18" aria-hidden="true" />
+      </Button>
+      <Button
+        text
+        size="small"
+        :severity="editor.isActive('link') ? 'primary' : 'secondary'"
+        aria-label="Insert link"
+        @click="promptLink()"
+      >
+        <iconify-icon icon="mdi:link-variant" width="18" height="18" aria-hidden="true" />
+      </Button>
+    </div>
   </BubbleMenu>
 
   <!-- Editor wrapper with iOS keyboard handling -->
