@@ -32,11 +32,13 @@
 - [ ] User deletes a note via a confirmation dialog and the note is removed from the list
 - [ ] Each list item displays the title, created date, and a plaintext preview snippet of the body
 
-**Plans:**
-- [ ] Plan 1 — PocketBase collection + data layer: define `kaheeta_notes` schema (owner, title, body fields), create `notesMapper.ts` (mapToUpdateNote strips read-only fields), add `instrumentedGetFullList` fetch with `requestKey: 'notes-getFullList'`, and write `src/types/wallecx/notes/types.d.ts`
-- [ ] Plan 2 — Tiptap editor component: install `@tiptap/vue-3 @tiptap/pm @tiptap/extension-bold @tiptap/extension-italic @tiptap/extension-heading @tiptap/extension-bullet-list @tiptap/extension-link`, build `NoteEditor.vue` with a PrimeVue Button toolbar and `BubbleMenu` for iOS, wire `editor.getJSON()` / `setContent()` for read-write, and add `visualViewport` resize handling for iOS keyboard
-- [ ] Plan 3 — Notes list + CRUD shell: build `NotesTab.vue` (lazy via `defineAsyncComponent`, `<Suspense>` skeleton) rendering a flat sorted list with title/date/snippet, `ManageNote.vue` (BaseMobileDialog — bottom sheet on mobile, Dialog on desktop) for create/edit with auto-save debounce (`useAutoSave` composable), and `useConfirm`-gated delete
-- [ ] Plan 4 — Navigation wiring: add a Notes entry to `KaheetaNavBar` (iconify-icon `mdi:note-text-outline`), register it as a tab in `WallecxApp.vue` alongside the existing five tabs, and add PWA shortcut support for `?action=notes`
+**Plans:** 4 plans
+
+Plans:
+- [ ] 01-PLAN-01.md — PocketBase collection schema (user_setup) + Note type definition + notesMapper + Wave 0 tests
+- [ ] 01-PLAN-02.md — Tiptap v3 package install + useAutoSave composable + NoteEditor.vue + WallecxSkeleton note-row variant + CSS
+- [ ] 01-PLAN-03.md — NotesTab.vue (list, empty state, delete) + ManageNote.vue (create/edit, auto-save, dirty guard)
+- [ ] 01-PLAN-04.md — WallecxApp.vue tab registration + vite.config.ts PWA shortcut + human-verify checkpoint
 
 **UI hint:** yes
 
@@ -89,7 +91,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Notes CRUD | 0/4 | Not started | - |
+| 1. Core Notes CRUD | 0/4 | Planning complete | - |
 | 2. Encryption Layer | 0/3 | Not started | - |
 | 3. Title Search | 0/2 | Not started | - |
 
@@ -116,4 +118,4 @@
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-06-30 after initial creation*
+*Last updated: 2026-06-30 — Phase 1 planning complete (4 plans, 2 waves)*
