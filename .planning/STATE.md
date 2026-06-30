@@ -48,7 +48,7 @@ Plans:
 
 - [x] Plan 1 — PocketBase collection + data layer
 - [x] Plan 2 — Tiptap editor component
-- [ ] Plan 3 — Notes list + CRUD shell
+- [x] Plan 3 — Notes list + CRUD shell
 - [ ] Plan 4 — Navigation wiring
 
 ## Key Decisions Locked
@@ -62,4 +62,4 @@ Plans:
 
 ## Next Step
 
-Run `/gsd:execute-phase 1` to execute Phase 1 plans.
+Execute Plan 4 — Navigation wiring (WallecxApp.vue tab + PWA shortcut).
