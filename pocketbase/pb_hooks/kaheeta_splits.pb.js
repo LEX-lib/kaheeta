@@ -236,6 +236,140 @@ routerAdd(
   $apis.requireAuth(),
 );
 
+// PATCH /api/kaheeta/split-expenses/{id} — edit an expense atomically: update its
+// fields and REPLACE its shares (delete old, insert new). Only the person who
+// added it or the group owner may. Re-runs the same validation as create.
+routerAdd(
+  "PATCH",
+  "/api/kaheeta/split-expenses/{id}",
+  (e) => {
+    const user = e.auth;
+    const expenseId = e.request.pathValue("id");
+    const body = e.requestInfo().body;
+
+    let expense;
+    try {
+      expense = $app.findRecordById("kaheeta_split_expenses", expenseId);
+    } catch (_) {
+      throw new NotFoundError("Expense not found.");
+    }
+
+    const groupId = expense.get("group");
+
+    let canEdit = expense.get("added_by") === user.id;
+    if (!canEdit && groupId) {
+      try {
+        const group = $app.findRecordById("kaheeta_groups", groupId);
+        canEdit = group.get("created_by") === user.id;
+      } catch (_) {
+        // group missing — fall through to the forbidden check below
+      }
+    }
+    if (!canEdit) {
+      throw new ForbiddenError(
+        "Only the person who added the expense or the group owner can edit it.",
+      );
+    }
+
+    const name = (body.name || "").trim();
+    if (!name) {
+      throw new BadRequestError("An expense name is required.");
+    }
+    const amount = Math.round(Number(body.amount));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestError("Amount must be a positive integer (minor units).");
+    }
+    const currency = (body.currency || "USD").trim();
+    const splitType = (body.split_type || "equal").trim();
+    const expenseDate = (body.expense_date || "").trim();
+    const paidBy = (body.paid_by || "").trim();
+    if (!paidBy) {
+      throw new BadRequestError("A payer is required.");
+    }
+    const notes = (body.notes || "").trim();
+
+    const shares = Array.isArray(body.shares) ? body.shares : [];
+    if (shares.length === 0) {
+      throw new BadRequestError("At least one share is required.");
+    }
+    let shareSum = 0;
+    for (let i = 0; i < shares.length; i++) {
+      const shareAmount = Math.round(Number(shares[i].amount));
+      const shareUser = (shares[i].user || "").trim();
+      if (!shareUser) {
+        throw new BadRequestError("Each share needs a user.");
+      }
+      if (!Number.isFinite(shareAmount)) {
+        throw new BadRequestError("Each share needs a numeric amount.");
+      }
+      shareSum += shareAmount;
+    }
+    if (shareSum !== amount) {
+      throw new BadRequestError("Shares must sum to the expense amount.");
+    }
+
+    // The payer must belong to the group.
+    const payerMembership = $app.findRecordsByFilter(
+      "kaheeta_group_members",
+      "group = {:g} && user = {:u}",
+      "", 1, 0,
+      { g: groupId, u: paidBy },
+    );
+    if (payerMembership.length === 0) {
+      throw new BadRequestError("The payer is not a member of this group.");
+    }
+    // Every share must be assigned to a member of the group.
+    for (let i = 0; i < shares.length; i++) {
+      const shareUserId = (shares[i].user || "").trim();
+      const shareMembership = $app.findRecordsByFilter(
+        "kaheeta_group_members",
+        "group = {:g} && user = {:u}",
+        "", 1, 0,
+        { g: groupId, u: shareUserId },
+      );
+      if (shareMembership.length === 0) {
+        throw new BadRequestError("A share is assigned to someone who is not a group member.");
+      }
+    }
+
+    try {
+      $app.runInTransaction((txApp) => {
+        expense.set("paid_by", paidBy);
+        expense.set("name", name);
+        expense.set("amount", amount);
+        expense.set("currency", currency);
+        expense.set("split_type", splitType);
+        expense.set("expense_date", expenseDate);
+        expense.set("notes", notes);
+        txApp.save(expense);
+
+        // Replace shares: delete the existing rows, then insert the new set.
+        const old = txApp.findRecordsByFilter(
+          "kaheeta_split_shares",
+          "expense = {:e}",
+          "", 0, 0,
+          { e: expense.id },
+        );
+        for (let i = 0; i < old.length; i++) {
+          txApp.delete(old[i]);
+        }
+        for (let i = 0; i < shares.length; i++) {
+          const share = new Record(txApp.findCollectionByNameOrId("kaheeta_split_shares"));
+          share.set("expense", expense.id);
+          share.set("user", (shares[i].user || "").trim());
+          share.set("amount", Math.round(Number(shares[i].amount)));
+          txApp.save(share);
+        }
+      });
+    } catch (err) {
+      throw new BadRequestError("Edit expense failed: " + (err.message || String(err)));
+    }
+
+    return e.json(200, { id: expense.id, name: expense.get("name"), amount: expense.get("amount") });
+  },
+  $apis.requireAuth(),
+);
+
 // POST /api/kaheeta/groups/join — join a group by its public_id (the invite code).
 routerAdd(
   "POST",
@@ -392,6 +526,9 @@ routerAdd(
       group.set("archived_at", new Date().toISOString());
     } else if (body.archived === false) {
       group.set("archived_at", "");
+    }
+    if (typeof body.simplify_debts === "boolean") {
+      group.set("simplify_debts", body.simplify_debts);
     }
     $app.save(group);
 

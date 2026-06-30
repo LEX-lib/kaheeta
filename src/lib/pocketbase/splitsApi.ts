@@ -53,6 +53,14 @@ export function archiveGroup(groupId: string, archived: boolean): Promise<void> 
   });
 }
 
+/** Toggle a group's display-only debt-simplification flag (owner only). */
+export function setGroupSimplify(groupId: string, simplifyDebts: boolean): Promise<void> {
+  return pb.send(`/api/kaheeta/groups/${groupId}`, {
+    method: "PATCH",
+    body: { simplify_debts: simplifyDebts },
+  });
+}
+
 export function deleteGroup(groupId: string): Promise<void> {
   return pb.send(`/api/kaheeta/groups/${groupId}`, { method: "DELETE" });
 }
@@ -68,6 +76,21 @@ export function createSplitExpense(
 ): Promise<CreateSplitExpenseResult> {
   return pb.send<CreateSplitExpenseResult>("/api/kaheeta/split-expenses", {
     method: "POST",
+    body: payload,
+  });
+}
+
+/**
+ * Edit a split expense atomically: update its fields and REPLACE its shares.
+ * The `group` in the payload is ignored server-side (an expense can't move
+ * groups). Only the expense's `added_by` or the group owner is permitted.
+ */
+export function updateSplitExpense(
+  expenseId: string,
+  payload: CreateSplitExpensePayload,
+): Promise<CreateSplitExpenseResult> {
+  return pb.send<CreateSplitExpenseResult>(`/api/kaheeta/split-expenses/${expenseId}`, {
+    method: "PATCH",
     body: payload,
   });
 }
