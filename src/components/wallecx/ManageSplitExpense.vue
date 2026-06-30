@@ -5,14 +5,24 @@ import { pb } from '@/lib/pocketbase'
 import { useToast } from '@/composables/useToast'
 import { equalSplit, weightedSplit } from '@/lib/wallecx/splitMath'
 import { formatCents } from '@/lib/wallecx/splitFormat'
-import { createSplitExpense } from '@/lib/pocketbase/splitsApi'
-import type { Group, GroupMember, SplitType } from '@/types/wallecx/splits/types'
+import { createSplitExpense, updateSplitExpense } from '@/lib/pocketbase/splitsApi'
+import type {
+  Group,
+  GroupMember,
+  SplitType,
+  SplitExpense,
+  SplitShare,
+} from '@/types/wallecx/splits/types'
 import BaseMobileDialog from './BaseMobileDialog.vue'
 
 const props = defineProps<{
   group: Group
   members: GroupMember[]
+  expense?: SplitExpense | null
+  expenseShares?: SplitShare[]
 }>()
+
+const isEditMode = computed(() => !!props.expense)
 
 const visible = defineModel('visible', { type: Boolean, default: false, required: true })
 
@@ -109,21 +119,41 @@ function seedInputs(): void {
 
 watch(splitType, seedInputs)
 
-// Reset the form each time the dialog opens.
+// Reset/prefill the form each time the dialog opens.
 watch(visible, (isOpen) => {
   if (!isOpen) {
     isSaving.value = false
     return
   }
+  exactAmounts.value = {}
+  percentages.value = {}
+  shareCounts.value = {}
+
+  if (props.expense) {
+    // Edit: prefill from the stored expense + its resolved shares. We only ever
+    // persisted resolved amounts, so edit always opens in Exact mode (the user
+    // can switch). Settlements aren't editable here (filtered upstream).
+    const ex = props.expense
+    const exShares = props.expenseShares ?? []
+    description.value = ex.name
+    amount.value = ex.amount / 100
+    expenseDate.value = ex.expense_date ? new Date(ex.expense_date) : new Date()
+    paidBy.value = ex.paid_by
+    splitType.value = 'exact'
+    selectedParticipants.value = exShares.map((s) => s.user)
+    const exact: Record<string, number | null> = {}
+    for (const s of exShares) exact[s.user] = s.amount / 100
+    exactAmounts.value = exact
+    return
+  }
+
+  // Add: empty defaults.
   description.value = ''
   amount.value = null
   expenseDate.value = new Date()
   paidBy.value = currentUserId.value || props.members[0]?.user || ''
   splitType.value = 'equal'
   selectedParticipants.value = props.members.map((m) => m.user)
-  exactAmounts.value = {}
-  percentages.value = {}
-  shareCounts.value = {}
 })
 
 async function onSubmit(): Promise<void> {
@@ -165,24 +195,35 @@ async function onSubmit(): Promise<void> {
     amount: shareMap[user] ?? 0,
   }))
 
+  const payload = {
+    group: props.group.id,
+    name,
+    amount: amountCents.value,
+    currency: currency.value,
+    split_type: splitType.value,
+    expense_date: dayjs(expenseDate.value).format('YYYY-MM-DD'),
+    paid_by: paidBy.value,
+    shares,
+  }
+
   isSaving.value = true
   try {
-    await createSplitExpense({
-      group: props.group.id,
-      name,
-      amount: amountCents.value,
-      currency: currency.value,
-      split_type: splitType.value,
-      expense_date: dayjs(expenseDate.value).format('YYYY-MM-DD'),
-      paid_by: paidBy.value,
-      shares,
-    })
+    if (props.expense) {
+      await updateSplitExpense(props.expense.id, payload)
+      toast.success('Expense updated.')
+    } else {
+      await createSplitExpense(payload)
+      toast.success('Expense added.')
+    }
     emit('saved')
-    toast.success('Expense added.')
     baseDialogRef.value?.closeWithoutGuard()
   } catch (e: unknown) {
-    toast.error('Failed to add expense. Please try again.')
-    console.error('ManageSplitExpense: createSplitExpense failed', e)
+    toast.error(
+      props.expense
+        ? 'Failed to update expense. Please try again.'
+        : 'Failed to add expense. Please try again.',
+    )
+    console.error('ManageSplitExpense: save failed', e)
   } finally {
     isSaving.value = false
   }
@@ -197,7 +238,7 @@ function onCancel(): void {
   <BaseMobileDialog
     ref="baseDialogRef"
     v-model:visible="visible"
-    title="Add expense"
+    :title="isEditMode ? 'Edit expense' : 'Add expense'"
     :is-dirty="isDirty"
     :is-saving="isSaving"
   >
@@ -375,7 +416,7 @@ function onCancel(): void {
         <Button
           type="submit"
           form="manage-split-expense-form"
-          label="Add expense"
+          :label="isEditMode ? 'Save changes' : 'Add expense'"
           fluid
           :loading="isSaving"
           :disabled="isSaving"
