@@ -132,13 +132,43 @@ export async function mockSplitsApi(
     return json(route, 200, { id, name: body.name, amount: body.amount });
   });
 
-  // --- Delete expense hook (soft delete) ---
+  // --- Edit (PATCH) / soft-delete (DELETE) expense hook ---
   await page.route(/\/api\/kaheeta\/split-expenses\/[^/?]+/, async (route) => {
-    if (route.request().method() !== "DELETE") return route.fallback();
+    const method = route.request().method();
     const id = new URL(route.request().url()).pathname.split("/").pop() ?? "";
     const ex = expenses.find((e) => e.id === id);
-    if (ex) ex.deleted_at = "2026-06-30 00:00:00.000Z";
-    return json(route, 200, { ok: true });
+
+    if (method === "DELETE") {
+      if (ex) ex.deleted_at = "2026-06-30 00:00:00.000Z";
+      return json(route, 200, { ok: true });
+    }
+    if (method === "PATCH") {
+      const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
+      if (ex) {
+        ex.name = body.name;
+        ex.amount = body.amount;
+        ex.currency = body.currency;
+        ex.split_type = body.split_type;
+        ex.expense_date = body.expense_date;
+        ex.paid_by = body.paid_by;
+        // Replace shares for this expense.
+        for (let i = shares.length - 1; i >= 0; i--) {
+          if (shares[i]!.expense === id) shares.splice(i, 1);
+        }
+        for (const s of (body.shares as Array<{ user: string; amount: number }>) ?? []) {
+          shares.push({
+            id: genId("sh_"),
+            collectionId: "kaheeta_split_shares",
+            collectionName: "kaheeta_split_shares",
+            expense: id,
+            user: s.user,
+            amount: s.amount,
+          });
+        }
+      }
+      return json(route, 200, { id, name: body.name, amount: body.amount });
+    }
+    return route.fallback();
   });
 
   // --- Group single-id ops (delete / archive) ---

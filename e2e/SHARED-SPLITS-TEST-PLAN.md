@@ -163,6 +163,46 @@ Each row: add an expense with the given method, then check the shares persisted 
 
 ---
 
+# Phase 5 — simplify debts, edit & multi-currency
+
+> **Prereq P-7:** the **updated** hook is deployed — `PATCH /api/kaheeta/split-expenses/{id}`
+> returns **401** (not 404) unauthenticated, and `PATCH /api/kaheeta/groups/{id}`
+> accepts a `simplify_debts` boolean.
+
+## J. Simplify debts (display-only)
+
+Set up a chain so the current user is an intermediary or nets out — e.g. Bob owes
+You 50, You owe Carol 50 (you net zero).
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-J-1 | Open the group as **owner** | A "Simplify" toggle shows next to Balances (off by default) | ☐ |
+| SPL-J-2 | Raw view (toggle off) | You see both raw rows: "Bob owes you …" and "You owe Carol …" | ☐ |
+| SPL-J-3 | Flip **Simplify** on | Balances collapse — you net to zero → "All settled up"; the Bob→Carol transfer no longer routes through you | ☐ |
+| SPL-J-4 | Reopen the group later | Toggle state persisted (the group's `simplify_debts` flag) | ☐ |
+| SPL-J-5 | As a **non-owner** member | No toggle; if simplify is on, a "· simplified" hint shows and balances are simplified | ☐ |
+| SPL-J-6 | Totals unchanged | Each person's net owed/owing is identical to the raw view — only the number of transfers drops | ☐ |
+
+## K. Edit expense
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-K-1 | Pencil icon on an expense (adder or owner; **not** settlements) → opens "Edit expense" | Form prefilled in **Exact** mode from the stored shares; amount/date/payer match | ☐ |
+| SPL-K-2 | Change the amount/shares and **Save changes** | Feed + balances update; shares still sum to the amount | ☐ |
+| SPL-K-3 | Rename and save | The new name shows in the feed | ☐ |
+| SPL-K-4 | As a member who is neither adder nor owner | No pencil; `PATCH /api/kaheeta/split-expenses/{id}` via curl → **403** | ☐ |
+| SPL-K-5 | Edit with shares NOT summing to the amount (via curl) | **400** "Shares must sum to the expense amount."; row unchanged | ☐ |
+| SPL-K-6 | Settlement rows | No pencil (settlements are delete + re-record, not edited) | ☐ |
+
+## L. Multi-currency
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-L-1 | Add expenses in two currencies in one group (e.g. a PHP and a USD expense) | Balances list each currency as a **separate** row; never summed | ☐ |
+| SPL-L-2 | With Simplify on | Simplification runs **per currency** independently | ☐ |
+
+---
+
 ## Exit-gate summary
 
 **Phase 3** is done when Sections **A, B, D, E** pass (see those sections).
@@ -175,5 +215,13 @@ Each row: add an expense with the given method, then check the shares persisted 
       a partial settlement reduces it; over-settling is blocked.
 - [ ] **Section I passes** — the adder or owner can soft-delete; others get 403;
       `deleted_at` is stamped and the row drops out of balances.
+
+**Phase 5** is done when:
+
+- [ ] **Section J passes** — Simplify collapses transfers (intermediaries drop
+      out), persists per group, and preserves each person's net total.
+- [ ] **Section K passes** — adder/owner can edit (atomic share replace, sum
+      re-validated); others get 403; settlements aren't editable.
+- [ ] **Section L passes** — currencies stay separate; simplify runs per currency.
 
 File any ❌ with its ID and the actual vs expected result.
