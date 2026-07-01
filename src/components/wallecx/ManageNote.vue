@@ -110,12 +110,21 @@ async function executeDraftWrite(): Promise<void> {
   }
 }
 
-/** Flush the pending debounced draft write synchronously (for onBeforeUnmount). */
-function flushDraftWrite(): void {
+/**
+ * Flush the pending debounced draft write and await its completion (CR-01/CR-02).
+ *
+ * Returns a Promise so callers (onSave) can await it before clearing the draft,
+ * preventing a race where the async write re-persists a just-cleared draft.
+ *
+ * onBeforeUnmount cannot await — it calls this as `void flushDraftWrite()` which
+ * is best-effort only.  The reliable persistence points for the last keystroke are
+ * the explicit Save/Discard handlers, not the unmount path.
+ */
+async function flushDraftWrite(): Promise<void> {
   if (draftTimer !== null) {
     clearTimeout(draftTimer)
     draftTimer = null
-    void executeDraftWrite()
+    await executeDraftWrite()
   }
 }
 
@@ -252,9 +261,9 @@ async function saveFn(): Promise<void> {
 // ---------------------------------------------------------------------------
 async function onSave(): Promise<void> {
   if (!isDirty.value || isSaving.value) return
-  // Flush any pending debounced draft write before saving so the draft timer
-  // doesn't fire concurrently with the PocketBase call.
-  flushDraftWrite()
+  // Await the flush so no in-flight encrypted write can race clearDraft below
+  // and resurrect a draft after a successful save (CR-01/CR-02).
+  await flushDraftWrite()
   isSaving.value = true
   // Capture the old id: for a new note, it changes from '' to the server-assigned
   // id after create, so we need to clear both the old `:new` key and the record id.
@@ -291,11 +300,12 @@ function onDiscard(): void {
   }
 }
 
-// Flush pending draft write before unmount to persist the last keystroke
-// (EDIT-02, D-04). Skip the flush if onDiscard already cancelled the timer
-// (timer === null at that point, so flushDraftWrite is a no-op anyway).
+// Best-effort: fire an async draft write if a debounce tick is still pending
+// when the component unmounts. onBeforeUnmount cannot await, so completion is
+// not guaranteed — the reliable persistence points are Save and Discard (CR-01).
+// If onDiscard already cleared the timer this is a no-op.
 onBeforeUnmount(() => {
-  flushDraftWrite()
+  void flushDraftWrite()
 })
 </script>
 
