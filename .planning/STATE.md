@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-discussed
-last_updated: "2026-07-01T15:20:00.000Z"
+status: phase-planned
+last_updated: "2026-07-01T15:40:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -24,7 +24,7 @@ current_phase_name: Fix Tiptap Editor Visuals
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** Phases 1–4 complete (13/13 v1 requirements shipped). Phase 5 (Fix Tiptap Editor Visuals) — ◆ DISCUSSED 2026-07-01, `05-CONTEXT.md` written. Root cause confirmed: Tailwind v4 preflight strips `ul`/`ol`/heading/`p` styles; editor CSS in `wallecx-overrides.css` has no list rules + caret-color only in dark mode. Decisions: D-01 bullets+numbered+nesting (add `@tiptap/extension-ordered-list` to NoteEditor.vue AND ManageNote.vue generateText); D-02 minimal typography (restore markers/margins/rhythm, no blockquote/code/hr); D-03 amber caret both themes. Next: `/gsd:plan-phase 5`.
+**Current focus:** Phases 1–4 complete (13/13 v1 requirements shipped). Phase 5 (Fix Tiptap Editor Visuals) — ◆ PLANNED 2026-07-01: 3 plans in 2 waves, verified by plan-checker (0 blockers, 0 warnings, all 12 dimensions). Root cause: Tailwind v4 preflight strips `ul`/`ol`/heading/`p` styles; editor CSS has no list rules + caret-color only in dark mode; no OrderedList extension. Plans: Wave 1 parallel — 05-01 (add `@tiptap/extension-ordered-list` to NoteEditor.vue + numbered-list toolbar button; extract snippet gen to pure tested `noteSnippet.ts` incl. OrderedList; rewire ManageNote.vue) + 05-02 (editor CSS: list markers/indent, heading/paragraph rhythm, global amber caret); Wave 2 — 05-03 (automated gate + blocking human visual UAT, both themes). Next: `/gsd:execute-phase 5`.
 
 ## Workflow State
 
@@ -39,7 +39,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | Phase 2 | ✓ Complete — 3/3 plans, verified 9/9, code-review WR-01/WR-03 fixed |
 | Phase 3 | ✓ Complete — 1/1 plans, verified 5/5 + human UAT 3/3, LIST-03 done |
 | Phase 4 | ✓ Complete — 2/2 plans, verified 9/9 + human UAT 5/5, code-review CR-01/02/03 + WR-01..04 fixed |
-| Phase 5 | ◆ Discussed — 05-CONTEXT.md written 2026-07-01 (bullets+numbered+nesting, minimal typography, amber caret); ready to plan |
+| Phase 5 | ◆ Planned — 3 plans (2 waves), plan-checker 0 issues 2026-07-01; ready to execute |
 
 ## Active Phase
 
