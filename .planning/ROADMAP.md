@@ -11,7 +11,7 @@
 
 - [x] **Phase 1: Core Notes CRUD** — Users can create, read, update, and delete richly-formatted notes from the wallet nav
 - [x] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
-- [ ] **Phase 3: Title Search** — Users can instantly filter their notes list by title
+- [x] **Phase 3: Title Search** — Users can instantly filter their notes list by title
 
 ---
 
@@ -94,7 +94,7 @@ Plans:
 
 Plans:
 
-- [ ] 03-01-PLAN.md — Title search: pure `filterNotesByTitle` helper + Vitest (`src/lib/wallecx/noteSearch.ts`), then wire `searchQuery` ref, `filteredNotes` computed, PrimeVue `<InputText>` + clear `<Button>`, and a distinct no-results empty state into `NotesTab.vue`. Merged from the two ROADMAP hints — both edit the single `NotesTab.vue` file so they cannot parallelise; kept as one plan with two tightly-scoped tasks.
+- [x] 03-01-PLAN.md — Title search: pure `filterNotesByTitle` helper + Vitest (`src/lib/wallecx/noteSearch.ts`), then wire `searchQuery` ref, `filteredNotes` computed, PrimeVue `<InputText>` + clear `<Button>`, and a distinct no-results empty state into `NotesTab.vue`. Merged from the two ROADMAP hints — both edit the single `NotesTab.vue` file so they cannot parallelise; kept as one plan with two tightly-scoped tasks.
 
 **UI hint:** yes
 
@@ -106,7 +106,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
 | 2. Encryption Layer | 3/3 | Complete | 2026-07-01 |
-| 3. Title Search | 0/1 | Not started | - |
+| 3. Title Search | 1/1 | Complete | 2026-07-01 |
 
 ---
 
@@ -124,11 +124,11 @@ Plans:
 | ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | Done |
 | ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Done |
 | ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Done |
-| LIST-03 | Title search — client-side filter, instant | Phase 3 | Pending |
+| LIST-03 | Title search — client-side filter, instant | Phase 3 | Done |
 
 **Coverage: 11/11 v1 requirements mapped. No orphans.**
 
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-07-01 — Phase 3 (Title Search) planned: 1 plan (03-01), two ROADMAP hints merged (single-file coupling)*
+*Last updated: 2026-07-01 — Phase 3 (Title Search) complete: 1/1 plans executed (03-01). LIST-03 done. All 11/11 v1 requirements satisfied. Milestone ready for close.*
