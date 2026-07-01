@@ -119,17 +119,23 @@ Plans:
 - [ ] Draft storage never holds plaintext beyond the device — it stays in local/sessionStorage only (consistent with the client-side-only privacy model); decide encrypted-at-rest vs. plaintext-draft during planning
 
 **Notes / open questions for discuss-phase:**
-- localStorage vs sessionStorage (survive full browser restart, or just tab refresh?) — key with `kaheeta:` prefix
-- Whether the local draft should itself be encrypted at rest, or plaintext is acceptable for an ephemeral same-device draft
-- Interaction with the existing `useAutoSave` composable (Phase 1) — replace or repurpose
-- Interaction with the dirty-guard already in `ManageNote.vue`
+- localStorage vs sessionStorage (survive full browser restart, or just tab refresh?) — key with `kaheeta:` prefix → **RESOLVED (D-01): localStorage**
+- Whether the local draft should itself be encrypted at rest, or plaintext is acceptable for an ephemeral same-device draft → **RESOLVED (D-02): encrypted at rest, same AES key**
+- Interaction with the existing `useAutoSave` composable (Phase 1) — replace or repurpose → **RESOLVED: extract focused `noteDraft.ts` module; drop `useAutoSave` from ManageNote**
+- Interaction with the dirty-guard already in `ManageNote.vue` → **RESOLVED (D-04): reuse BaseMobileDialog :is-dirty/@discard; discard keeps the draft**
 
 **UI hint:** yes
 
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run `/gsd:plan-phase 4` to break down)
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Pure draft module (TDD): `src/lib/wallecx/noteDraft.ts` (`draftKey`, `saveDraft`, `loadDraft`, `clearDraft`, `isDraftNewer`) encrypting drafts at rest with the shared AES key (D-01, D-02) + full Vitest coverage of the encrypt/decrypt round-trip, guarded corrupt-input read, and newer-than-saved comparison (EDIT-02)
+
+**Wave 2** *(depends on 04-01)*
+
+- [ ] 04-02-PLAN.md — Component wiring: rewire `ManageNote.vue` from auto-save to explicit dirty-only Save + debounced encrypted draft writes + Restore/Discard recovery prompt on reopen (D-03, D-04), and add `clearDraft` to `NotesTab.vue`'s delete path (EDIT-01 + EDIT-02). Depends on 04-01 (consumes `noteDraft.ts`); shares `ManageNote.vue` so cannot parallelise with Wave 1.
 
 ---
 
@@ -140,7 +146,7 @@ Plans:
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
 | 2. Encryption Layer | 3/3 | Complete | 2026-07-01 |
 | 3. Title Search | 1/1 | Complete | 2026-07-01 |
-| 4. Manual Save with Draft Recovery | 0/0 | Not planned | - |
+| 4. Manual Save with Draft Recovery | 0/2 | Planned | - |
 
 ---
 
@@ -167,4 +173,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-07-01 — v1 complete (Phases 1-3, 11/11 reqs). Phase 4 added: Manual Save with Draft Recovery (EDIT-01/02, supersedes NOTE-04 auto-save). Not yet planned — run /gsd:plan-phase 4.*
+*Last updated: 2026-07-01 — Phase 4 planned: 2 plans (04-01 pure draft module TDD → 04-02 ManageNote/NotesTab wiring). EDIT-01 manual save supersedes NOTE-04; EDIT-02 draft recovery.*
