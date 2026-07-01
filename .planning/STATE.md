@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: milestone-complete
-last_updated: "2026-07-01T04:00:00.000Z"
+status: phase-pending
+last_updated: "2026-07-01T04:20:00.000Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
   total_plans: 4
   completed_plans: 4
-  percent: 100
-current_phase: 3
-current_phase_name: Title Search
+  percent: 75
+current_phase: 4
+current_phase_name: Manual Save with Draft Recovery
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: Title Search
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** v1 milestone COMPLETE — all 3 phases done, 11/11 requirements satisfied. Ready for `/gsd:complete-milestone`.
+**Current focus:** v1 (Phases 1–3) complete. Phase 4 added — Manual Save with Draft Recovery (EDIT-01/02) — not yet planned. Next: `/gsd:plan-phase 4`.
 
 ## Workflow State
 
@@ -38,8 +38,13 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | Phase 1 | ✓ Complete — 4/4 plans, verified 5/5, code review criticals fixed |
 | Phase 2 | ✓ Complete — 3/3 plans, verified 9/9, code-review WR-01/WR-03 fixed |
 | Phase 3 | ✓ Complete — 1/1 plans, verified 5/5 + human UAT 3/3, LIST-03 done |
+| Phase 4 | ○ Pending — added 2026-07-01, not yet planned (EDIT-01/02, supersedes NOTE-04) |
 
 ## Active Phase
+
+**Phase 4: Manual Save with Draft Recovery** — ○ Pending (added 2026-07-01, not yet planned)
+Goal: Replace transparent auto-save with explicit manual Save; stash unsaved edits to local/sessionStorage as a per-note draft so an accidental refresh or dialog close doesn't lose work, with draft recovery on reopen. Requirements: EDIT-01 (manual save, supersedes NOTE-04), EDIT-02 (draft persistence + recovery). Open questions captured in ROADMAP (localStorage vs sessionStorage; encrypt draft at rest?; reuse `useAutoSave`/dirty-guard).
+Next: `/gsd:plan-phase 4` (or `/gsd:discuss-phase 4` first to settle the open questions).
 
 **Phase 3: Title Search** — ✓ Complete (1/1 plans, verified 5/5 + human UAT 3/3 approved, 2026-07-01)
 Goal: Users can instantly filter the notes list by typing in a search box — results narrow in real time as they type, with no server round-trip.
@@ -81,10 +86,16 @@ Goal: Every note body AND snippet is encrypted with AES-GCM (256-bit) in the bro
 
 ## Next Step
 
-v1 milestone COMPLETE. All 3 phases done, 11/11 v1 requirements satisfied. Phase 3 (Title Search)
-verified 5/5 (code) + 3/3 human UAT (approved 2026-07-01). Search input finalized with PrimeVue
-IconField (inline search + clear icons, matching ExpensesToolbar/WallecxToolbar). 114/114 tests,
-type-check clean. Next: run `/gsd:complete-milestone` to archive v1 and prepare the next milestone.
+v1 (Phases 1–3) delivered — 11/11 requirements. Phase 4 ADDED as a post-v1 enhancement:
+Manual Save with Draft Recovery (EDIT-01 supersedes NOTE-04 auto-save; EDIT-02 = local/sessionStorage
+draft persistence + recovery). Not yet planned. Next: `/gsd:plan-phase 4` (consider `/gsd:discuss-phase 4`
+first to settle localStorage-vs-session, encrypt-draft-at-rest, and useAutoSave reuse). Chose to extend
+the current milestone rather than close it + open v2.
+
+## Accumulated Context
+
+### Roadmap Evolution
+- Phase 4 added 2026-07-01: Manual Save with Draft Recovery (EDIT-01/EDIT-02, supersedes NOTE-04). Extends v1 rather than opening a v2 milestone.
 
 **Session:** 2026-07-01 — Planned + executed + verified Phase 3 (03-01). Commits: test RED (bb6ed8e),
 feat GREEN (5fe8c3e), feat Task 2 UI (252622d), docs (ea60fff), IconField refactor (2f33283).

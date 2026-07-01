@@ -10,7 +10,12 @@
 - [ ] **NOTE-01**: User can create a note with a title and a rich-text body (Tiptap WYSIWYG editor)
 - [ ] **NOTE-02**: User can open and edit an existing note
 - [ ] **NOTE-03**: User can delete a note with a confirmation dialog
-- [ ] **NOTE-04**: Note changes auto-save — no explicit save button required
+- [~] **NOTE-04**: ~~Note changes auto-save — no explicit save button required~~ **Superseded by EDIT-01 (Phase 4)** — auto-save is being replaced with manual save.
+
+### Editing (Phase 4 — post-v1 enhancement)
+
+- [ ] **EDIT-01**: Manual save replaces auto-save — the editor has an explicit Save control and a visible dirty/unsaved indicator; edits are not written to PocketBase on every keystroke (supersedes NOTE-04)
+- [ ] **EDIT-02**: Unsaved edits are persisted to local/sessionStorage as a per-note draft and recovered after an accidental refresh or dialog close, so in-progress work is not lost
 
 ### Encryption
 
@@ -68,7 +73,9 @@
 | NOTE-01 | Phase 1 | Pending |
 | NOTE-02 | Phase 1 | Pending |
 | NOTE-03 | Phase 1 | Pending |
-| NOTE-04 | Phase 1 | Pending |
+| NOTE-04 | Phase 1 → 4 | Superseded by EDIT-01 |
+| EDIT-01 | Phase 4 | Pending |
+| EDIT-02 | Phase 4 | Pending |
 | ENC-01 | Phase 2 | Done |
 | ENC-02 | Phase 2 | Done |
 | ENC-03 | Phase 2 | Done |
@@ -78,10 +85,11 @@
 | NAV-01 | Phase 1 | Pending |
 
 **Coverage:**
-- v1 requirements: 11 total
-- Mapped to phases: 11
+- v1 requirements: 11 total (all mapped; delivered in Phases 1–3)
+- Post-v1 enhancement (Phase 4): EDIT-01, EDIT-02 (EDIT-01 supersedes NOTE-04)
+- Mapped to phases: 13
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-30*
-*Last updated: 2026-06-30 after initial definition*
+*Last updated: 2026-07-01 — Phase 4 added (EDIT-01 manual save supersedes NOTE-04 auto-save; EDIT-02 draft recovery).*

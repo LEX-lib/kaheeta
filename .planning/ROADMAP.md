@@ -1,9 +1,9 @@
 # Roadmap: Kaheeta Notes
 
-**Total phases:** 3
+**Total phases:** 4
 **Estimated completion:** 3 weeks (at 1 phase/week)
 **Granularity:** Standard
-**Coverage:** 11/11 v1 requirements mapped
+**Coverage:** 13/13 requirements mapped (v1 complete; Phase 4 = post-v1 enhancement)
 
 ---
 
@@ -12,6 +12,7 @@
 - [x] **Phase 1: Core Notes CRUD** — Users can create, read, update, and delete richly-formatted notes from the wallet nav
 - [x] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
 - [x] **Phase 3: Title Search** — Users can instantly filter their notes list by title
+- [ ] **Phase 4: Manual Save with Draft Recovery** — Explicit save + local draft persistence so accidental refresh/close never loses edits
 
 ---
 
@@ -100,6 +101,38 @@ Plans:
 
 ---
 
+### Phase 4: Manual Save with Draft Recovery
+
+**Goal:** Replace the transparent auto-save in the note editor with an explicit manual **Save** action. While a note is open, unsaved edits are continuously stashed to local/sessionStorage as a draft, so an accidental page refresh or closing the notes dialog does not lose work. On reopening a note (or the editor) with a newer local draft than the saved version, the user is offered draft recovery. Saving commits the draft to PocketBase (encrypted per Phase 2) and clears the local draft; discarding drops it.
+
+**Depends on:** Phase 3 (and revises Phase 1 auto-save behavior)
+
+**Requirements:** EDIT-01, EDIT-02 (EDIT-01 supersedes NOTE-04)
+
+**Success criteria:**
+
+- [ ] The note editor has an explicit Save control and a visible dirty/unsaved indicator; edits are NOT written to PocketBase automatically on every keystroke
+- [ ] While editing, unsaved changes are persisted to local/sessionStorage (draft), keyed per note (and a "new note" draft for unsaved new notes)
+- [ ] After an accidental refresh or closing the dialog without saving, reopening the note detects the local draft and offers to restore it instead of showing the last-saved content
+- [ ] Clicking Save writes the current content to PocketBase (encrypted, per Phase 2) and clears the local draft; the dirty indicator resets
+- [ ] Discarding/closing after a save leaves no stale draft; a note with no unsaved changes shows no recovery prompt on reopen
+- [ ] Draft storage never holds plaintext beyond the device — it stays in local/sessionStorage only (consistent with the client-side-only privacy model); decide encrypted-at-rest vs. plaintext-draft during planning
+
+**Notes / open questions for discuss-phase:**
+- localStorage vs sessionStorage (survive full browser restart, or just tab refresh?) — key with `kaheeta:` prefix
+- Whether the local draft should itself be encrypted at rest, or plaintext is acceptable for an ephemeral same-device draft
+- Interaction with the existing `useAutoSave` composable (Phase 1) — replace or repurpose
+- Interaction with the dirty-guard already in `ManageNote.vue`
+
+**UI hint:** yes
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run `/gsd:plan-phase 4` to break down)
+
+---
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -107,6 +140,7 @@ Plans:
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
 | 2. Encryption Layer | 3/3 | Complete | 2026-07-01 |
 | 3. Title Search | 1/1 | Complete | 2026-07-01 |
+| 4. Manual Save with Draft Recovery | 0/0 | Not planned | - |
 
 ---
 
@@ -117,7 +151,7 @@ Plans:
 | NOTE-01 | Create note with title and rich-text body (Tiptap) | Phase 1 | Done |
 | NOTE-02 | Open and edit an existing note | Phase 1 | Done |
 | NOTE-03 | Delete a note with confirmation dialog | Phase 1 | Done |
-| NOTE-04 | Note changes auto-save — no explicit save button | Phase 1 | Done |
+| NOTE-04 | Note changes auto-save — no explicit save button | Phase 1 | Superseded by EDIT-01 (Phase 4) |
 | LIST-01 | Flat list sorted by last-modified (newest first) | Phase 1 | Done |
 | LIST-02 | List item shows title, created date, plaintext preview | Phase 1 | Done |
 | NAV-01 | Notes section accessible from main wallet nav | Phase 1 | Done |
@@ -125,10 +159,12 @@ Plans:
 | ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Done |
 | ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Done |
 | LIST-03 | Title search — client-side filter, instant | Phase 3 | Done |
+| EDIT-01 | Manual save replaces auto-save (explicit Save + dirty indicator) | Phase 4 | Pending |
+| EDIT-02 | Unsaved edits persisted to local/sessionStorage + recovered after refresh/close | Phase 4 | Pending |
 
-**Coverage: 11/11 v1 requirements mapped. No orphans.**
+**Coverage: 13/13 requirements mapped. No orphans.** (NOTE-04 auto-save superseded by EDIT-01 in Phase 4.)
 
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-07-01 — Phase 3 (Title Search) COMPLETE: 1/1 plans (03-01), verified 5/5 + human UAT 3/3 approved. LIST-03 done. All 11/11 v1 requirements satisfied. Milestone ready for close.*
+*Last updated: 2026-07-01 — v1 complete (Phases 1-3, 11/11 reqs). Phase 4 added: Manual Save with Draft Recovery (EDIT-01/02, supersedes NOTE-04 auto-save). Not yet planned — run /gsd:plan-phase 4.*
