@@ -120,9 +120,9 @@ Plans:
 | LIST-01 | Flat list sorted by last-modified (newest first) | Phase 1 | Done |
 | LIST-02 | List item shows title, created date, plaintext preview | Phase 1 | Done |
 | NAV-01 | Notes section accessible from main wallet nav | Phase 1 | Done |
-| ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | Pending |
-| ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Pending |
-| ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Pending |
+| ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | In Progress |
+| ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | In Progress |
+| ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | In Progress |
 | LIST-03 | Title search — client-side filter, instant | Phase 3 | Pending |
 
 **Coverage: 11/11 v1 requirements mapped. No orphans.**

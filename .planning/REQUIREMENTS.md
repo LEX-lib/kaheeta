@@ -14,9 +14,9 @@
 
 ### Encryption
 
-- [x] **ENC-01**: Note body is encrypted client-side (AES-GCM, 256-bit) before writing to PocketBase — server never stores plaintext
-- [x] **ENC-02**: Encryption key is derived from the user's session via PBKDF2 + per-user salt — transparent to the user, no extra password prompt
-- [x] **ENC-03**: Decryption happens in-browser on read — body is never sent in plaintext over the wire
+- [ ] **ENC-01**: Note body is encrypted client-side (AES-GCM, 256-bit) before writing to PocketBase — server never stores plaintext
+- [ ] **ENC-02**: Encryption key is derived from the user's session via PBKDF2 + per-user salt — transparent to the user, no extra password prompt
+- [ ] **ENC-03**: Decryption happens in-browser on read — body is never sent in plaintext over the wire
 
 ### Notes List
 
@@ -69,9 +69,9 @@
 | NOTE-02 | Phase 1 | Pending |
 | NOTE-03 | Phase 1 | Pending |
 | NOTE-04 | Phase 1 | Pending |
-| ENC-01 | Phase 2 | Complete |
-| ENC-02 | Phase 2 | Complete |
-| ENC-03 | Phase 2 | Complete |
+| ENC-01 | Phase 2 | In Progress |
+| ENC-02 | Phase 2 | In Progress |
+| ENC-03 | Phase 2 | In Progress |
 | LIST-01 | Phase 1 | Pending |
 | LIST-02 | Phase 1 | Pending |
 | LIST-03 | Phase 3 | Pending |
