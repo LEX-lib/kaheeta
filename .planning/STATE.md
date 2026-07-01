@@ -24,7 +24,7 @@ current_phase_name: Manual Save with Draft Recovery
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** v1 (Phases 1–3) complete. Phase 4 added — Manual Save with Draft Recovery (EDIT-01/02) — not yet planned. Next: `/gsd:plan-phase 4`.
+**Current focus:** v1 (Phases 1–3) complete. Phase 4 (Manual Save with Draft Recovery) — CONTEXT.md captured (4 decisions locked); ready to plan. Next: `/gsd:plan-phase 4`.
 
 ## Workflow State
 
@@ -42,9 +42,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 ## Active Phase
 
-**Phase 4: Manual Save with Draft Recovery** — ○ Pending (added 2026-07-01, not yet planned)
-Goal: Replace transparent auto-save with explicit manual Save; stash unsaved edits to local/sessionStorage as a per-note draft so an accidental refresh or dialog close doesn't lose work, with draft recovery on reopen. Requirements: EDIT-01 (manual save, supersedes NOTE-04), EDIT-02 (draft persistence + recovery). Open questions captured in ROADMAP (localStorage vs sessionStorage; encrypt draft at rest?; reuse `useAutoSave`/dirty-guard).
-Next: `/gsd:plan-phase 4` (or `/gsd:discuss-phase 4` first to settle the open questions).
+**Phase 4: Manual Save with Draft Recovery** — ◆ Context gathered (added 2026-07-01; `04-CONTEXT.md` written, ready to plan)
+Goal: Replace transparent auto-save with explicit manual Save; stash unsaved edits locally so an accidental refresh or dialog close doesn't lose work, with draft recovery on reopen. Requirements: EDIT-01 (manual save, supersedes NOTE-04), EDIT-02 (draft persistence + recovery).
+Locked decisions (04-CONTEXT.md): D-01 localStorage (`kaheeta:note-draft:<id>` / `:new`); D-02 draft encrypted at rest with the same AES key; D-03 Restore/Discard prompt on reopen when a newer draft exists; D-04 explicit Save (dirty-only) commits + clears draft, close keeps draft.
+Next: `/gsd:plan-phase 4`.
 
 **Phase 3: Title Search** — ✓ Complete (1/1 plans, verified 5/5 + human UAT 3/3 approved, 2026-07-01)
 Goal: Users can instantly filter the notes list by typing in a search box — results narrow in real time as they type, with no server round-trip.
