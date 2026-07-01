@@ -125,24 +125,25 @@ async function handleNoteSaved(updatedNote: Note): Promise<void> {
     </div>
 
     <!-- Search bar -->
-    <div class="flex items-center gap-2 mb-4">
-      <div class="relative flex-1">
-        <InputText
-          v-model="searchQuery"
-          placeholder="Search notes by title"
-          aria-label="Search notes by title"
-          class="w-full"
-        />
-      </div>
-      <Button
+    <IconField class="w-full mb-4">
+      <InputIcon class="pi pi-search" />
+      <InputText
+        v-model="searchQuery"
+        placeholder="Search notes by title"
+        aria-label="Search notes by title"
+        class="w-full"
+      />
+      <InputIcon
         v-if="hasActiveQuery"
-        icon="pi pi-times"
-        text
-        rounded
+        class="pi pi-times cursor-pointer"
+        role="button"
+        tabindex="0"
         aria-label="Clear search"
         @click="searchQuery = ''"
+        @keydown.enter="searchQuery = ''"
+        @keydown.space.prevent="searchQuery = ''"
       />
-    </div>
+    </IconField>
 
     <!-- Notes list (populated state) -->
     <div v-if="filteredNotes.length > 0" class="flex flex-col gap-2">
