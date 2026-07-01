@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planned
-last_updated: "2026-07-01T01:06:16.000Z"
+status: executed
+last_updated: "2026-07-01T02:00:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 100
 current_phase: 2
 current_phase_name: Encryption Layer
 ---
@@ -24,7 +24,7 @@ current_phase_name: Encryption Layer
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** Phase 2 — Encryption Layer (planned, ready to execute)
+**Current focus:** Phase 2 — Encryption Layer (all 3 plans executed; pending phase verification)
 
 ## Workflow State
 
@@ -36,19 +36,21 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | REQUIREMENTS.md | ✓ Complete — 11 v1 requirements |
 | ROADMAP.md | ✓ Complete — 3 phases, 11/11 requirements mapped |
 | Phase 1 | ✓ Complete — 4/4 plans, verified 5/5, code review criticals fixed |
-| Phase 2 | ◐ In progress — 2/3 plans complete (02-01 crypto primitives, 02-02 key lifecycle) |
+| Phase 2 | ◑ Executed — 3/3 plans, human-verify 4/4; pending phase verification |
 | Phase 3 | ○ Pending |
 
 ## Active Phase
 
-**Phase 2: Encryption Layer** (in progress — 2/3 plans complete)
+**Phase 2: Encryption Layer** (all 3 plans executed — pending phase verification)
 Goal: Every note body AND snippet is encrypted with AES-GCM (256-bit) in the browser before it is written to PocketBase, decrypted transparently on read; no second password; legacy plaintext handled lazily.
 
 Plans:
 
-- [x] Plan 1 (02-01) — Crypto primitives (notesCrypto.ts + tests) [Wave 1, TDD] ✓ 8 tests green, ENC-01/02/03 complete
-- [x] Plan 2 (02-02) — Salt + key lifecycle (useNotesCrypto, kaheeta_user_settings) [Wave 2] ✓ composable + UserSettings type, vue-tsc clean; collection setup is an operator action tracked by the orchestrator
-- [ ] Plan 3 (02-03) — Encrypt-on-write / decrypt-on-read integration [Wave 2]
+- [x] Plan 1 (02-01) — Crypto primitives (notesCrypto.ts + tests) [Wave 1, TDD] ✓ 8 tests green
+- [x] Plan 2 (02-02) — Salt + key lifecycle (useNotesCrypto, kaheeta_user_settings) [Wave 2] ✓ composable + UserSettings type
+- [x] Plan 3 (02-03) — Encrypt-on-write / decrypt-on-read integration [Wave 2] ✓ 96 tests green, human-verify 4/4
+
+**Operator setup done:** `kaheeta_user_settings` collection created; `kaheeta_notes.snippet` max raised 150→0 (encrypted snippet overflowed the Phase 1 cap).
 
 **Phase 1: Core Notes CRUD** — ✓ Complete (4/4 plans, verified 5/5, code-review criticals fixed)
 

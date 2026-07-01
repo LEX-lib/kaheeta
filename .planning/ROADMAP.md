@@ -71,7 +71,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 02-02-PLAN.md — Per-user salt + key lifecycle (Wave 2, depends 01): `useNotesCrypto` composable derives the key from `user.id` + a 16-byte salt stored in a new `kaheeta_user_settings` collection (D-05), caches the CryptoKey module-scoped per session (D-03), clears on logout; NEVER uses the rotating token (D-01)
-- [ ] 02-03-PLAN.md — Encrypt-on-write / decrypt-on-read integration (Wave 2, depends 01+02): `ManageNote.vue` encrypts body+snippet before write and decrypts on load; `NotesTab.vue` decrypts list snippets; lazy plaintext fallback with `toast.error()` on failure, no crash (D-10, resolves WR-01)
+- [x] 02-03-PLAN.md — Encrypt-on-write / decrypt-on-read integration (Wave 2, depends 01+02): `ManageNote.vue` encrypts body+snippet before write and decrypts on load; `NotesTab.vue` decrypts list snippets; lazy plaintext fallback with `toast.error()` on failure, no crash (D-10, resolves WR-01)
 
 ---
 
@@ -104,7 +104,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
-| 2. Encryption Layer | 2/3 | In Progress|  |
+| 2. Encryption Layer | 3/3 | Executed (pending verification) | - |
 | 3. Title Search | 0/2 | Not started | - |
 
 ---
