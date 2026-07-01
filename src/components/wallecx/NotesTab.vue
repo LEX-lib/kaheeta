@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 import { decryptBody } from '@/lib/wallecx/notesCrypto'
 import { useNotesCrypto } from '@/composables/useNotesCrypto'
 import { filterNotesByTitle } from '@/lib/wallecx/noteSearch'
+import { clearDraft } from '@/lib/wallecx/noteDraft'
 import type { Note } from '@/types/wallecx/notes/types'
 import dayjs from 'dayjs'
 
@@ -79,6 +80,7 @@ function requestDelete(note: Note): void {
       try {
         await pb.collection('kaheeta_notes').delete(note.id)
         notes.value = notes.value.filter((n) => n.id !== note.id)
+        clearDraft(note.id)
         toast.success('Note deleted.')
       } catch (e: unknown) {
         toast.error('Failed to delete note.')
