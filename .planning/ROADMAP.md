@@ -90,10 +90,11 @@ Plans:
 - [ ] Clearing the search box restores the full list
 - [ ] Search operates on the already-loaded notes array — no additional PocketBase request is made
 
-**Plans:**
+**Plans:** 1 plan
 
-- [ ] Plan 1 — Search state + filter logic: add a `searchQuery` ref to `NotesTab.vue`, derive `filteredNotes` as a `computed()` that filters the loaded notes array by `note.title.toLowerCase().includes(query)`, and ensure the list renders `filteredNotes` rather than the raw array
-- [ ] Plan 2 — Search UI: add a PrimeVue `<InputText>` with a clear button (`<Button icon="pi pi-times">`) above the notes list; debounce is not needed (client-side filter is instant); wire `v-model` to `searchQuery`; show an empty-state message when `filteredNotes.length === 0` and a query is active
+Plans:
+
+- [ ] 03-01-PLAN.md — Title search: pure `filterNotesByTitle` helper + Vitest (`src/lib/wallecx/noteSearch.ts`), then wire `searchQuery` ref, `filteredNotes` computed, PrimeVue `<InputText>` + clear `<Button>`, and a distinct no-results empty state into `NotesTab.vue`. Merged from the two ROADMAP hints — both edit the single `NotesTab.vue` file so they cannot parallelise; kept as one plan with two tightly-scoped tasks.
 
 **UI hint:** yes
 
@@ -105,7 +106,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
 | 2. Encryption Layer | 3/3 | Complete | 2026-07-01 |
-| 3. Title Search | 0/2 | Not started | - |
+| 3. Title Search | 0/1 | Not started | - |
 
 ---
 
@@ -130,4 +131,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-07-01 — Phase 2 execution: 02-02 (salt + key lifecycle) complete, 2/3 plans*
+*Last updated: 2026-07-01 — Phase 3 (Title Search) planned: 1 plan (03-01), two ROADMAP hints merged (single-file coupling)*
