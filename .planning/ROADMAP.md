@@ -12,7 +12,7 @@
 - [x] **Phase 1: Core Notes CRUD** — Users can create, read, update, and delete richly-formatted notes from the wallet nav
 - [x] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
 - [x] **Phase 3: Title Search** — Users can instantly filter their notes list by title
-- [ ] **Phase 4: Manual Save with Draft Recovery** — Explicit save + local draft persistence so accidental refresh/close never loses edits
+- [x] **Phase 4: Manual Save with Draft Recovery** — Explicit save + local draft persistence so accidental refresh/close never loses edits (completed 2026-07-01)
 
 ---
 
@@ -165,8 +165,8 @@ Plans:
 | ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Done |
 | ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Done |
 | LIST-03 | Title search — client-side filter, instant | Phase 3 | Done |
-| EDIT-01 | Manual save replaces auto-save (explicit Save + dirty indicator) | Phase 4 | Pending |
-| EDIT-02 | Unsaved edits persisted to local/sessionStorage + recovered after refresh/close | Phase 4 | Pending |
+| EDIT-01 | Manual save replaces auto-save (explicit Save + dirty indicator) | Phase 4 | Done |
+| EDIT-02 | Unsaved edits persisted to local/sessionStorage + recovered after refresh/close | Phase 4 | Done |
 
 **Coverage: 13/13 requirements mapped. No orphans.** (NOTE-04 auto-save superseded by EDIT-01 in Phase 4.)
 

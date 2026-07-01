@@ -14,8 +14,8 @@
 
 ### Editing (Phase 4 — post-v1 enhancement)
 
-- [ ] **EDIT-01**: Manual save replaces auto-save — the editor has an explicit Save control and a visible dirty/unsaved indicator; edits are not written to PocketBase on every keystroke (supersedes NOTE-04)
-- [ ] **EDIT-02**: Unsaved edits are persisted to local/sessionStorage as a per-note draft and recovered after an accidental refresh or dialog close, so in-progress work is not lost
+- [x] **EDIT-01**: Manual save replaces auto-save — the editor has an explicit Save control and a visible dirty/unsaved indicator; edits are not written to PocketBase on every keystroke (supersedes NOTE-04)
+- [x] **EDIT-02**: Unsaved edits are persisted to local/sessionStorage as a per-note draft and recovered after an accidental refresh or dialog close, so in-progress work is not lost
 
 ### Encryption
 
@@ -74,8 +74,8 @@
 | NOTE-02 | Phase 1 | Pending |
 | NOTE-03 | Phase 1 | Pending |
 | NOTE-04 | Phase 1 → 4 | Superseded by EDIT-01 |
-| EDIT-01 | Phase 4 | Pending |
-| EDIT-02 | Phase 4 | Pending |
+| EDIT-01 | Phase 4 | Done |
+| EDIT-02 | Phase 4 | Done |
 | ENC-01 | Phase 2 | Done |
 | ENC-02 | Phase 2 | Done |
 | ENC-03 | Phase 2 | Done |
