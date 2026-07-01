@@ -7,6 +7,7 @@ import { pb } from '@/lib/pocketbase'
 import { useAuthStore } from '@/stores/auth'
 import { decryptBody } from '@/lib/wallecx/notesCrypto'
 import { useNotesCrypto } from '@/composables/useNotesCrypto'
+import { filterNotesByTitle } from '@/lib/wallecx/noteSearch'
 import type { Note } from '@/types/wallecx/notes/types'
 import dayjs from 'dayjs'
 
@@ -38,6 +39,7 @@ async function decryptSnippets(rawNotes: Note[]): Promise<Note[]> {
 const notes = ref<Note[]>([])
 const showManage = ref(false)
 const manageRecord = ref<Note | null>(null)
+const searchQuery = ref('')
 
 // Top-level await drives Suspense fallback in WallecxApp
 try {
@@ -56,6 +58,10 @@ try {
 const sortedNotes = computed(() =>
   [...notes.value].sort((a, b) => b.updated.localeCompare(a.updated)),
 )
+
+// Search state — ephemeral, never persisted
+const hasActiveQuery = computed(() => searchQuery.value.trim().length > 0)
+const filteredNotes = computed(() => filterNotesByTitle(sortedNotes.value, searchQuery.value))
 
 function openManage(note: Note | null): void {
   manageRecord.value = note
@@ -118,10 +124,30 @@ async function handleNoteSaved(updatedNote: Note): Promise<void> {
       />
     </div>
 
+    <!-- Search bar -->
+    <div class="flex items-center gap-2 mb-4">
+      <div class="relative flex-1">
+        <InputText
+          v-model="searchQuery"
+          placeholder="Search notes by title"
+          aria-label="Search notes by title"
+          class="w-full"
+        />
+      </div>
+      <Button
+        v-if="hasActiveQuery"
+        icon="pi pi-times"
+        text
+        rounded
+        aria-label="Clear search"
+        @click="searchQuery = ''"
+      />
+    </div>
+
     <!-- Notes list (populated state) -->
-    <div v-if="sortedNotes.length > 0" class="flex flex-col gap-2">
+    <div v-if="filteredNotes.length > 0" class="flex flex-col gap-2">
       <div
-        v-for="note in sortedNotes"
+        v-for="note in filteredNotes"
         :key="note.id"
         class="flex items-start justify-between gap-2 p-4 rounded border cursor-pointer border-[var(--color-surface-divider)] bg-[var(--color-surface-card-2)] hover:brightness-95 transition-[filter]"
         role="button"
@@ -156,7 +182,21 @@ async function handleNoteSaved(updatedNote: Note): Promise<void> {
       </div>
     </div>
 
-    <!-- Empty state -->
+    <!-- Empty state: no results for active search query -->
+    <div v-else-if="hasActiveQuery" class="flex flex-col items-center py-12 gap-3">
+      <iconify-icon
+        icon="mdi:file-search-outline"
+        width="48"
+        height="48"
+        style="color: var(--color-brand-primary)"
+        aria-hidden="true"
+      />
+      <p class="text-sm" style="color: var(--color-typo-heading)">
+        No notes match "{{ searchQuery }}".
+      </p>
+    </div>
+
+    <!-- Empty state: no notes yet -->
     <div v-else class="flex flex-col items-center py-12 gap-3">
       <iconify-icon
         icon="mdi:note-text-outline"
