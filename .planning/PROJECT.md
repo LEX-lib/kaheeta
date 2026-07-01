@@ -20,16 +20,18 @@ Users can capture private, richly-formatted notes knowing the server stores only
 - ✓ PWA with manual update prompt — existing
 - ✓ Mobile-first responsive layout (BaseMobileDialog, safe-area insets) — existing
 - ✓ Dark/light theme toggle (`.my-app-dark`, Aura preset, pre-hydration script) — existing
+- ✓ User can create, read, update, and delete notes — Validated in Phase 1
+- ✓ Each note has a title and a rich-text body (WYSIWYG editor) — Validated in Phase 1
+- ✓ Notes are displayed in a flat list, sorted by last-modified — Validated in Phase 1
+- ✓ User can search notes by title — Validated in Phase 3
+- ✓ Note body + snippet client-side encrypted (AES-GCM via Web Crypto API) before hitting PocketBase — Validated in Phase 2
+- ✓ Encryption key derived from user's session (PBKDF2 + per-user salt) — Validated in Phase 2
+- ✓ Notes section accessible via the main wallet nav — Validated in Phase 1
+- ✓ Explicit manual Save replaces auto-save; unsaved edits stashed as an encrypted local draft and recovered on reopen — Validated in Phase 4 (EDIT-01/EDIT-02)
 
 ### Active
 
-- [ ] User can create, read, update, and delete notes
-- [ ] Each note has a title and a rich-text body (WYSIWYG editor)
-- [ ] Notes are displayed in a flat list, sorted by last-modified
-- [ ] User can search notes by title or body content
-- [ ] Note body is client-side encrypted (AES-GCM via Web Crypto API) before hitting PocketBase — server never stores plaintext
-- [ ] Encryption key derived from user's session (PBKDF2) — transparent to the user, no extra password
-- [ ] Notes section is accessible via the main wallet nav
+- (none — v1 milestone complete: 13/13 requirements delivered across Phases 1–4)
 
 ### Out of Scope
 
@@ -92,4 +94,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-30 after initialization*
+*Last updated: 2026-07-01 — v1 milestone complete (Phases 1–4, 13/13 requirements). Notes feature shipped: CRUD, client-side encryption, title search, manual save with encrypted draft recovery.*
