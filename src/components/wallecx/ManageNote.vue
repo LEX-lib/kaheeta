@@ -198,6 +198,15 @@ onMounted(async () => {
           editorContent.value = decryptedContent
           isDecrypting.value = false
         },
+        onHide: () => {
+          // Escape / backdrop dismissal without an explicit choice (CR-03).
+          // Fall back to saved content and keep the draft so it can be recovered
+          // on the next open. Guard: only act if neither callback already fired.
+          if (isDecrypting.value) {
+            editorContent.value = decryptedContent
+            isDecrypting.value = false
+          }
+        },
       })
       // Don't set isDecrypting = false here — the confirm callbacks do it.
       return
