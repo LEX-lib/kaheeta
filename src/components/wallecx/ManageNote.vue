@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { pb } from '@/lib/pocketbase'
 import { mapToUpdateNote } from '@/lib/pocketbase/notesMapper'
 import { useAutoSave } from '@/composables/useAutoSave'
+import { encryptBody, decryptBody } from '@/lib/wallecx/notesCrypto'
+import { useNotesCrypto } from '@/composables/useNotesCrypto'
+import { useToast } from '@/composables/useToast'
 import type { Note } from '@/types/wallecx/notes/types'
 import { generateText } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
@@ -31,6 +34,8 @@ const emit = defineEmits<{
 const visible = defineModel<boolean>('visible', { required: true })
 
 const auth = useAuthStore()
+const { getOrDeriveKey } = useNotesCrypto()
+const toast = useToast()
 
 // Initialise the working record from the prop
 const record = ref<Note>(
@@ -52,10 +57,46 @@ const record = ref<Note>(
 
 const isNew = computed(() => !record.value.id)
 
-// Initialise editor content from existing note body
-const editorContent = ref<JSONContent | null>(
-  props.note ? (props.note.body ? (JSON.parse(props.note.body) as JSONContent) : null) : null,
-)
+// Editor content is populated asynchronously on mount after decryption
+// (WR-01: the old synchronous unguarded JSON.parse is gone — decryption and
+// parsing now happen in the onMounted handler with a non-crashing fallback).
+const editorContent = ref<JSONContent | null>(null)
+const isDecrypting = ref(true)
+
+// Decrypt-on-load (ENC-03) with D-10 lazy-migration fallback:
+//   1. decryptBody throws OperationError for a Phase 1 plaintext body → fall
+//      back to treating props.note.body as raw plaintext JSON.
+//   2. if THAT is also not valid JSON → toast.error, leave editor empty, never
+//      crash. This resolves WR-01 (unguarded JSON.parse) as part of the same path.
+onMounted(async () => {
+  if (!props.note?.body) {
+    isDecrypting.value = false
+    return
+  }
+  try {
+    const key = await getOrDeriveKey()
+    let plainBody: string
+    try {
+      plainBody = await decryptBody(key, props.note.body)
+    } catch {
+      // Legacy Phase 1 plaintext body — decryptBody rejected it (D-10).
+      plainBody = props.note.body
+    }
+    try {
+      editorContent.value = plainBody ? (JSON.parse(plainBody) as JSONContent) : null
+    } catch {
+      // Fallback body was not valid JSON either — surface, don't crash (D-10).
+      toast.error('Could not open this note — it may be corrupted.')
+      editorContent.value = null
+    }
+  } catch (e: unknown) {
+    // Unexpected failure (e.g. key derivation) — surface, don't crash.
+    toast.error('Could not open this note.')
+    console.error('ManageNote: decrypt failed', e)
+  } finally {
+    isDecrypting.value = false
+  }
+})
 
 // The save function called by useAutoSave
 async function saveFn(): Promise<void> {
@@ -66,10 +107,19 @@ async function saveFn(): Promise<void> {
     { blockSeparator: ' ' },
   ).slice(0, 150)
 
+  // Encrypt-on-write (ENC-01, D-09): both body AND snippet are encrypted with
+  // AES-GCM before they ever reach mapToUpdateNote / PocketBase. The server
+  // never receives plaintext note content. getOrDeriveKey is cached after the
+  // first call, so this is effectively instant on subsequent saves (D-03).
+  const plainBody = JSON.stringify(editorContent.value)
+  const key = await getOrDeriveKey()
+  const body = await encryptBody(key, plainBody)
+  const encSnippet = await encryptBody(key, snippet)
+
   const payload = mapToUpdateNote({
     ...record.value,
-    body: JSON.stringify(editorContent.value),
-    snippet,
+    body,
+    snippet: encSnippet,
   })
 
   if (isNew.value) {
@@ -163,7 +213,7 @@ const statusColor = computed(() => {
 
     <!-- NoteEditor inside v-if guard for proper mount/unmount lifecycle (RESEARCH.md Open Question 3) -->
     <NoteEditor
-      v-if="visible"
+      v-if="visible && !isDecrypting"
       v-model="editorContent"
       @update:model-value="trigger()"
     />
