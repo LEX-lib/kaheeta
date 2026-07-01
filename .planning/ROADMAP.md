@@ -61,12 +61,12 @@ Plans:
 - [ ] The user is never prompted for a separate encryption password — key derivation is fully transparent
 - [ ] Notes created before encryption (Phase 1 plaintext bodies) are handled gracefully — detected and rendered without crashing, then upgraded to ciphertext on next edit (lazy migration)
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Crypto primitives (Wave 1, TDD): `src/lib/wallecx/notesCrypto.ts` exposing `deriveKey(userId, salt)`, `encryptBody(key, plaintext)`, `decryptBody(key, b64)` via `window.crypto.subtle` (AES-GCM-256 + PBKDF2, per-call IV, loop-based Base64); full unit tests in `notesCrypto.test.ts`
+- [x] 02-01-PLAN.md — Crypto primitives (Wave 1, TDD): `src/lib/wallecx/notesCrypto.ts` exposing `deriveKey(userId, salt)`, `encryptBody(key, plaintext)`, `decryptBody(key, b64)` via `window.crypto.subtle` (AES-GCM-256 + PBKDF2, per-call IV, loop-based Base64); full unit tests in `notesCrypto.test.ts`
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -104,7 +104,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
-| 2. Encryption Layer | 0/3 | Not started | - |
+| 2. Encryption Layer | 1/3 | In Progress|  |
 | 3. Title Search | 0/2 | Not started | - |
 
 ---
