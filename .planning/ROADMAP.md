@@ -10,7 +10,7 @@
 ## Phases
 
 - [x] **Phase 1: Core Notes CRUD** — Users can create, read, update, and delete richly-formatted notes from the wallet nav
-- [ ] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
+- [x] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
 - [ ] **Phase 3: Title Search** — Users can instantly filter their notes list by title
 
 ---
@@ -104,7 +104,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
-| 2. Encryption Layer | 3/3 | Executed (pending verification) | - |
+| 2. Encryption Layer | 3/3 | Complete | 2026-07-01 |
 | 3. Title Search | 0/2 | Not started | - |
 
 ---
@@ -120,9 +120,9 @@ Plans:
 | LIST-01 | Flat list sorted by last-modified (newest first) | Phase 1 | Done |
 | LIST-02 | List item shows title, created date, plaintext preview | Phase 1 | Done |
 | NAV-01 | Notes section accessible from main wallet nav | Phase 1 | Done |
-| ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | In Progress |
-| ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | In Progress |
-| ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | In Progress |
+| ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | Done |
+| ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Done |
+| ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Done |
 | LIST-03 | Title search — client-side filter, instant | Phase 3 | Pending |
 
 **Coverage: 11/11 v1 requirements mapped. No orphans.**

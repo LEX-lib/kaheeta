@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executed
-last_updated: "2026-07-01T02:00:00.000Z"
+status: phase-complete
+last_updated: "2026-07-01T02:30:00.000Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
   completed_plans: 3
   percent: 100
@@ -24,7 +24,7 @@ current_phase_name: Encryption Layer
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** Phase 2 — Encryption Layer (all 3 plans executed; pending phase verification)
+**Current focus:** Phase 2 — Encryption Layer ✓ Complete. Next: Phase 3 — Title Search.
 
 ## Workflow State
 
@@ -36,12 +36,12 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | REQUIREMENTS.md | ✓ Complete — 11 v1 requirements |
 | ROADMAP.md | ✓ Complete — 3 phases, 11/11 requirements mapped |
 | Phase 1 | ✓ Complete — 4/4 plans, verified 5/5, code review criticals fixed |
-| Phase 2 | ◑ Executed — 3/3 plans, human-verify 4/4; pending phase verification |
+| Phase 2 | ✓ Complete — 3/3 plans, verified 9/9, code-review WR-01/WR-03 fixed |
 | Phase 3 | ○ Pending |
 
 ## Active Phase
 
-**Phase 2: Encryption Layer** (all 3 plans executed — pending phase verification)
+**Phase 2: Encryption Layer** — ✓ Complete (3/3 plans, verified 9/9)
 Goal: Every note body AND snippet is encrypted with AES-GCM (256-bit) in the browser before it is written to PocketBase, decrypted transparently on read; no second password; legacy plaintext handled lazily.
 
 Plans:
@@ -68,12 +68,9 @@ Plans:
 
 ## Next Step
 
-Phase 2 in progress — Plans 02-01 (crypto primitives) and 02-02 (salt + key lifecycle) complete.
-02-02 delivered `useNotesCrypto` (`getOrDeriveKey`/`clearKey`, module-scoped session key cache,
-logout invalidation) + the `UserSettings` type; `vue-tsc` clean. Key material is `user.id`, never
-the token (D-01); salt bootstraps into `kaheeta_user_settings` (D-05/D-06).
-Next (Wave 2): Plan 02-03 (encrypt-on-write / decrypt-on-read integration in ManageNote/NotesTab,
-lazy plaintext fallback D-10). Operator must create the `kaheeta_user_settings` collection before
-any live note write/read succeeds — tracked as an operator action by the orchestrator.
-ENC-01/02/03 remain In Progress until the phase verification gate passes.
-Deferred Phase 1 code-review findings (7 warnings + 3 info) in `01-REVIEW.md`.
+Phase 2 (Encryption Layer) complete & verified — ENC-01/02/03 done; 100/100 tests, vue-tsc clean.
+Code-review WR-01 (key-derivation race) + WR-03 (fallback contract) fixed with regression tests;
+WR-02/WR-04 + info items deferred to backlog (`02-REVIEW.md`). Deferred Phase 1 findings in `01-REVIEW.md`.
+Operator setup done: `kaheeta_user_settings` collection created; `kaheeta_notes.snippet` max 150→0.
+Next: plan Phase 3 — Title Search (`/gsd:plan-phase 3`). Note: Phase 3 title search works on the
+plaintext `title` field (titles are not encrypted — see 02-03-SUMMARY residual note).
