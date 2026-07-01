@@ -49,6 +49,7 @@ Plans:
 - [x] 04-01 (Wave 1, TDD) — pure `noteDraft.ts` module (draftKey/saveDraft/loadDraft/clearDraft/isDraftNewer, encrypted at rest) + Vitest [EDIT-02] — RED fb0f867 → GREEN 50286af, 26→29 tests
 - [x] 04-02 (Wave 2, depends 04-01) — rewired `ManageNote.vue`: removed useAutoSave→manual Save + debounced encrypted draft writes + Restore/Discard recovery; `clearDraft` on delete in `NotesTab.vue` [EDIT-01, EDIT-02]
 Code review: 3 blockers (CR-01 async unmount flush, CR-02 post-save race, CR-03 dismiss-blanks-editor) + 4 warnings — all fixed (d20f55f, 6491f3d, 0819bdf, 56b3c3b, 45f8578, dce598a). 143 tests green.
+UX decision (confirmed by user 2026-07-01, fills D-04 gap): **Save keeps the dialog open** ("save-in-place") — Save clears the draft + resets the dirty indicator but does not close the dialog. D-04 only mandated write+clear+reset; close-on-save was intentionally not adopted.
 Verification: 9/9 must-haves VERIFIED; status human_needed — 5 manual UAT items in `04-HUMAN-UAT.md` (last-keystroke durability, Restore/Discard interaction, draft-kept-on-close, new-note lifecycle, ciphertext-at-rest). NOT marked complete until human UAT approved (EDIT-01/EDIT-02 stay Pending in ROADMAP).
 Next: manually test the 5 UAT items → approve → phase completes (v1 milestone done).
 
