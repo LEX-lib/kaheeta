@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest'
 import { deriveKey } from './notesCrypto'
 import { draftKey, saveDraft, loadDraft, clearDraft, isDraftNewer } from './noteDraft'
 import type { JSONContent } from '@tiptap/core'
@@ -93,6 +93,25 @@ describe('saveDraft — ciphertext-at-rest control (D-02)', () => {
     await saveDraft(null, { title: SAMPLE_TITLE, body: SAMPLE_BODY }, cryptoKey)
     const raw = localStorage.getItem('kaheeta:note-draft:new')
     expect(raw).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WR-01: saveDraft must not throw when localStorage.setItem throws (quota/private)
+// ---------------------------------------------------------------------------
+describe('saveDraft — localStorage quota guard (WR-01)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does not throw when localStorage.setItem throws QuotaExceededError', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError')
+    })
+    // Must not throw — caller receives a resolved promise
+    await expect(
+      saveDraft('quota-test', { title: SAMPLE_TITLE, body: SAMPLE_BODY }, cryptoKey),
+    ).resolves.toBeUndefined()
   })
 })
 
@@ -224,5 +243,14 @@ describe('isDraftNewer (D-03 newer-than-saved comparison)', () => {
 
   it('returns false for an empty string savedAt', () => {
     expect(isDraftNewer('', NEWER)).toBe(false)
+  })
+
+  // WR-02: unparseable recordUpdated must not cause a valid draft to be discarded
+  it('returns true when recordUpdated is an empty string (no valid saved baseline)', () => {
+    expect(isDraftNewer(NEWER, '')).toBe(true)
+  })
+
+  it('returns true when recordUpdated is a non-date string (unparseable saved baseline)', () => {
+    expect(isDraftNewer(NEWER, 'not-a-date')).toBe(true)
   })
 })
