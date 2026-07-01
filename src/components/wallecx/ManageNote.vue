@@ -279,9 +279,15 @@ async function onSave(): Promise<void> {
   const oldNoteId = record.value.id || null
   try {
     await saveFn()
-    // On success: clear draft for both old id and `:new` key (new-note handling).
+    // On success: clear drafts.
+    // - oldNoteId: the `:new` key (for a new note, id was '' before saveFn).
+    // - null: belt-and-suspenders `:new` clear; no-op if already absent.
+    // - record.value.id: after a create, saveFn assigns the real server id via
+    //   Object.assign — clear that key too so a debounce tick that raced with
+    //   the id assignment cannot resurrect a draft under the new id (WR-03).
     clearDraft(oldNoteId)
-    clearDraft(null) // always clear the `:new` draft; no-op if already absent
+    clearDraft(null)
+    clearDraft(record.value.id || null)
     isDirty.value = false
     // Keep the dialog open — save-in-place UX (the editor stays active after save).
   } catch (e: unknown) {
