@@ -237,7 +237,10 @@ async function saveFn(): Promise<void> {
   // AES-GCM before they ever reach mapToUpdateNote / PocketBase. The server
   // never receives plaintext note content. getOrDeriveKey is cached after the
   // first call, so this is effectively instant on subsequent saves (D-03).
-  const plainBody = JSON.stringify(editorContent.value)
+  // WR-04: derive plainBody from the same rawContent used for snippet so both
+  // paths use the same null-fallback (empty-doc) rather than diverging when
+  // editorContent is null ("null" string vs empty doc object).
+  const plainBody = JSON.stringify(rawContent)
   const key = await getOrDeriveKey()
   const body = await encryptBody(key, plainBody)
   const encSnippet = await encryptBody(key, snippet)
