@@ -54,11 +54,20 @@ describe("wrong key rejects (ENC-01 security)", () => {
   });
 });
 
-describe("legacy plaintext fallback contract (D-10)", () => {
+describe("legacy plaintext fallback contract (D-10 / WR-03)", () => {
   it("decrypting a raw Phase 1 plaintext body rejects (never returns garbage)", async () => {
     const key = await makeKey();
     // A legacy note stored its body as raw JSON, not Base64 ciphertext.
     await expect(decryptBody(key, '{"type":"doc"}')).rejects.toThrow();
+  });
+
+  it("rejects on non-Base64 input via atob (WR-03: not only OperationError)", async () => {
+    const key = await makeKey();
+    // WR-03: a legacy plaintext value is not valid Base64, so atob() throws
+    // InvalidCharacterError BEFORE decrypt is reached. The contract is "ANY
+    // rejection means fall back to plaintext" — callers must never narrow their
+    // catch to OperationError, or this input would crash them.
+    await expect(decryptBody(key, "definitely not base64 !!!")).rejects.toThrow();
   });
 });
 

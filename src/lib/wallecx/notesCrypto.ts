@@ -6,8 +6,12 @@
 // D-02: AES-GCM-256 via window.crypto.subtle, no new npm packages.
 // D-07: fresh 12-byte IV per encrypt call, prepended to the ciphertext.
 // D-08: loop-based Base64 (never spread + btoa) to survive >65KB bodies.
-// D-10: decryptBody lets OperationError propagate so callers own the
-//       legacy-plaintext fallback — it is NOT caught here.
+// D-10: decryptBody REJECTS on any non-ciphertext input so callers own the
+//       legacy-plaintext fallback — it is NOT caught here. Note the rejection
+//       is not always an OperationError: a legacy Phase 1 plaintext body is not
+//       valid Base64, so atob() throws InvalidCharacterError *before* decrypt is
+//       reached. Callers MUST treat ANY rejection as "not ciphertext → fall
+//       back to plaintext" (WR-03) — never narrow the catch to OperationError.
 
 // crypto.subtle resolves to window.crypto.subtle in the browser and
 // globalThis.crypto.subtle under jsdom — reference it via the global binding.
@@ -67,9 +71,11 @@ export async function encryptBody(key: CryptoKey, plaintext: string): Promise<st
 
 /**
  * Decrypt a Base64 blob produced by encryptBody.
- * Throws OperationError for a wrong key, tampered bytes, or a legacy plaintext
- * value passed as ciphertext. Callers MUST catch to trigger the D-10 fallback —
- * this function intentionally does NOT catch.
+ * REJECTS for a wrong key or tampered bytes (OperationError) AND for a legacy
+ * plaintext value passed as ciphertext (InvalidCharacterError from atob, since
+ * plaintext JSON is not valid Base64). Callers MUST catch ANY error to trigger
+ * the D-10 fallback — this function intentionally does NOT catch, and callers
+ * must NOT narrow their catch to a specific error type (WR-03).
  */
 export async function decryptBody(key: CryptoKey, b64: string): Promise<string> {
   const combined = base64ToUint8(b64);
