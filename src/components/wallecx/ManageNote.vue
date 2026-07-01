@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import { useConfirm } from 'primevue/useconfirm'
 import { useAuthStore } from '@/stores/auth'
 import { pb } from '@/lib/pocketbase'
 import { mapToUpdateNote } from '@/lib/pocketbase/notesMapper'
-import { useAutoSave } from '@/composables/useAutoSave'
 import { encryptBody, decryptBody } from '@/lib/wallecx/notesCrypto'
 import { useNotesCrypto } from '@/composables/useNotesCrypto'
 import { useToast } from '@/composables/useToast'
+import { saveDraft, loadDraft, clearDraft, isDraftNewer } from '@/lib/wallecx/noteDraft'
 import type { Note } from '@/types/wallecx/notes/types'
 import { generateText } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
@@ -36,6 +37,7 @@ const visible = defineModel<boolean>('visible', { required: true })
 const auth = useAuthStore()
 const { getOrDeriveKey } = useNotesCrypto()
 const toast = useToast()
+const confirm = useConfirm()
 
 // Initialise the working record from the prop
 const record = ref<Note>(
@@ -63,42 +65,148 @@ const isNew = computed(() => !record.value.id)
 const editorContent = ref<JSONContent | null>(null)
 const isDecrypting = ref(true)
 
+// Dirty state — true when the user has made unsaved edits (EDIT-01, D-04).
+const isDirty = ref(false)
+
+// Save-in-flight flag — prevents concurrent saves and disables the Save button.
+const isSaving = ref(false)
+
+// Template ref for closing the dialog without triggering the dirty guard (D-04).
+const dialogRef = ref<InstanceType<typeof BaseMobileDialog> | null>(null)
+
+// ---------------------------------------------------------------------------
+// Debounced draft write (EDIT-02, D-01/D-02)
+//
+// ~800ms debounce: draft writes go to localStorage only —
+// PocketBase is never touched on keystrokes any more.
+// ---------------------------------------------------------------------------
+
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleDraftWrite(): void {
+  // Guard: don't write while the decrypt step is still running (content is
+  // being populated — writing mid-decrypt would persist empty/stale content).
+  if (isDecrypting.value) return
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer)
+  }
+  draftTimer = setTimeout(() => {
+    draftTimer = null
+    void executeDraftWrite()
+  }, 800)
+}
+
+async function executeDraftWrite(): Promise<void> {
+  try {
+    const key = await getOrDeriveKey()
+    await saveDraft(record.value.id || null, {
+      title: record.value.title,
+      body: editorContent.value,
+    }, key)
+  } catch (e: unknown) {
+    // Draft write failures are silent — the user's edits are still in memory
+    // and they can still Save explicitly.
+    console.warn('ManageNote: draft write failed', e)
+  }
+}
+
+/** Flush the pending debounced draft write synchronously (for onBeforeUnmount). */
+function flushDraftWrite(): void {
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer)
+    draftTimer = null
+    void executeDraftWrite()
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Decrypt-on-load (ENC-03) with D-10 lazy-migration fallback:
 //   1. decryptBody throws OperationError for a Phase 1 plaintext body → fall
 //      back to treating props.note.body as raw plaintext JSON.
 //   2. if THAT is also not valid JSON → toast.error, leave editor empty, never
 //      crash. This resolves WR-01 (unguarded JSON.parse) as part of the same path.
+//
+// D-03: after the decrypt completes, check for a newer local draft and prompt
+//   Restore / Discard before populating the editor.
+// ---------------------------------------------------------------------------
 onMounted(async () => {
-  if (!props.note?.body) {
-    isDecrypting.value = false
-    return
+  let decryptedContent: JSONContent | null = null
+
+  if (props.note?.body) {
+    try {
+      const key = await getOrDeriveKey()
+      let plainBody: string
+      try {
+        plainBody = await decryptBody(key, props.note.body)
+      } catch {
+        // Legacy Phase 1 plaintext body — decryptBody rejected it (D-10).
+        plainBody = props.note.body
+      }
+      try {
+        decryptedContent = plainBody ? (JSON.parse(plainBody) as JSONContent) : null
+      } catch {
+        // Fallback body was not valid JSON either — surface, don't crash (D-10).
+        toast.error('Could not open this note — it may be corrupted.')
+        decryptedContent = null
+      }
+    } catch (e: unknown) {
+      // Unexpected failure (e.g. key derivation) — surface, don't crash.
+      toast.error('Could not open this note.')
+      console.error('ManageNote: decrypt failed', e)
+    }
   }
+
+  // D-03: check for a newer draft before populating the editor.
   try {
     const key = await getOrDeriveKey()
-    let plainBody: string
-    try {
-      plainBody = await decryptBody(key, props.note.body)
-    } catch {
-      // Legacy Phase 1 plaintext body — decryptBody rejected it (D-10).
-      plainBody = props.note.body
-    }
-    try {
-      editorContent.value = plainBody ? (JSON.parse(plainBody) as JSONContent) : null
-    } catch {
-      // Fallback body was not valid JSON either — surface, don't crash (D-10).
-      toast.error('Could not open this note — it may be corrupted.')
-      editorContent.value = null
+    const noteId = record.value.id || null
+    const draft = await loadDraft(noteId, key)
+
+    // Treat any `:new` draft as newer than a blank new note (no saved timestamp).
+    const isNewer = draft !== null && (
+      isNew.value
+        ? true
+        : isDraftNewer(draft.savedAt, record.value.updated)
+    )
+
+    if (isNewer && draft !== null) {
+      // Prompt before showing the editor — user picks Restore or Discard (D-03).
+      confirm.require({
+        header: 'Unsaved changes found',
+        message: 'You have an unsaved draft of this note. Restore it or discard?',
+        acceptLabel: 'Restore',
+        rejectLabel: 'Discard',
+        accept: () => {
+          // Restore: load draft content → dirty (user's work is back in the editor).
+          record.value.title = draft.title
+          editorContent.value = draft.body
+          isDirty.value = true
+          isDecrypting.value = false
+        },
+        reject: () => {
+          // Discard: remove the draft and use the saved version.
+          clearDraft(noteId)
+          editorContent.value = decryptedContent
+          isDecrypting.value = false
+        },
+      })
+      // Don't set isDecrypting = false here — the confirm callbacks do it.
+      return
     }
   } catch (e: unknown) {
-    // Unexpected failure (e.g. key derivation) — surface, don't crash.
-    toast.error('Could not open this note.')
-    console.error('ManageNote: decrypt failed', e)
-  } finally {
-    isDecrypting.value = false
+    // Draft check failure is non-fatal — just open normally.
+    console.warn('ManageNote: draft check failed', e)
   }
+
+  // No draft (or not newer) — populate the editor with the saved content.
+  editorContent.value = decryptedContent
+  isDecrypting.value = false
 })
 
-// The save function called by useAutoSave
+// ---------------------------------------------------------------------------
+// Save function — PocketBase encrypt-on-write (EDIT-01).
+// Called ONLY from onSave(); never from edit handlers.
+// ---------------------------------------------------------------------------
 async function saveFn(): Promise<void> {
   const rawContent = editorContent.value ?? { type: 'doc', content: [] }
   const snippet = generateText(
@@ -123,6 +231,7 @@ async function saveFn(): Promise<void> {
   })
 
   if (isNew.value) {
+    // Capture the id BEFORE the create so we can clear the `:new` draft key.
     const created = await pb.collection('kaheeta_notes').create<Note>({
       ...payload,
       user: auth.user?.id,
@@ -138,68 +247,74 @@ async function saveFn(): Promise<void> {
   }
 }
 
-const { status, trigger, flush, cancel } = useAutoSave(saveFn, 1000)
-
-// CR-01: when the user confirms "Discard changes?", drop the pending save so the
-// onBeforeUnmount flush below does not persist the discarded edit.
-let discarded = false
-function onDiscard(): void {
-  discarded = true
-  cancel()
+// ---------------------------------------------------------------------------
+// Manual Save handler (D-04)
+// ---------------------------------------------------------------------------
+async function onSave(): Promise<void> {
+  if (!isDirty.value || isSaving.value) return
+  // Flush any pending debounced draft write before saving so the draft timer
+  // doesn't fire concurrently with the PocketBase call.
+  flushDraftWrite()
+  isSaving.value = true
+  // Capture the old id: for a new note, it changes from '' to the server-assigned
+  // id after create, so we need to clear both the old `:new` key and the record id.
+  const oldNoteId = record.value.id || null
+  try {
+    await saveFn()
+    // On success: clear draft for both old id and `:new` key (new-note handling).
+    clearDraft(oldNoteId)
+    clearDraft(null) // always clear the `:new` draft; no-op if already absent
+    isDirty.value = false
+    // Keep the dialog open — save-in-place UX (the editor stays active after save).
+  } catch (e: unknown) {
+    toast.error('Failed to save note.')
+    console.error('ManageNote: save failed', e)
+    // Keep isDirty = true and the draft intact so the user can retry or close.
+  } finally {
+    isSaving.value = false
+  }
 }
 
-// Flush pending debounce before unmount to prevent last-keystroke data loss
-// (Pitfall 7) — unless the close was an explicit discard.
+// ---------------------------------------------------------------------------
+// Discard handler (D-04)
+// Called by BaseMobileDialog when the user confirms "Discard changes?".
+// The draft is KEPT — that is the point of the phase (D-04).
+// ---------------------------------------------------------------------------
+function onDiscard(): void {
+  // Cancel any pending debounce timer so the last-keystroke draft write
+  // doesn't fire after the component unmounts.
+  // (We do NOT clearDraft here — the draft stays in localStorage so the user
+  // can recover it on the next open.)
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer)
+    draftTimer = null
+  }
+}
+
+// Flush pending draft write before unmount to persist the last keystroke
+// (EDIT-02, D-04). Skip the flush if onDiscard already cancelled the timer
+// (timer === null at that point, so flushDraftWrite is a no-op anyway).
 onBeforeUnmount(() => {
-  if (!discarded) {
-    flush()
-  }
-})
-
-// Auto-save status display text
-const statusText = computed(() => {
-  switch (status.value) {
-    case 'saving':
-      return 'Saving…'
-    case 'saved':
-      return 'Saved'
-    case 'error':
-      return 'Save failed — tap to retry'
-    default:
-      return ''
-  }
-})
-
-// Auto-save status color
-const statusColor = computed(() => {
-  switch (status.value) {
-    case 'saving':
-      return 'var(--color-typo-muted)'
-    case 'saved':
-      return 'var(--color-status-success)'
-    case 'error':
-      return 'var(--color-status-error)'
-    default:
-      return ''
-  }
+  flushDraftWrite()
 })
 </script>
 
 <template>
   <BaseMobileDialog
+    ref="dialogRef"
     v-model:visible="visible"
     :title="isNew ? 'New Note' : 'Edit Note'"
-    :is-dirty="status === 'pending' || status === 'saving'"
-    :is-saving="status === 'saving'"
+    :is-dirty="isDirty"
+    :is-saving="isSaving"
     @discard="onDiscard"
   >
-    <!-- Auto-save status indicator -->
+    <!-- Dirty indicator (replaces the old auto-save status span) -->
     <span
       class="text-xs block mb-2"
-      :style="{ color: statusColor }"
+      style="color: var(--color-typo-muted)"
       aria-live="polite"
       aria-atomic="true"
-    >{{ statusText }}</span>
+    >{{ isDirty ? 'Unsaved changes' : '' }}</span>
 
     <!-- Title input -->
     <InputText
@@ -208,14 +323,24 @@ const statusColor = computed(() => {
       class="w-full mb-3"
       aria-label="Note title"
       maxlength="500"
-      @input="trigger()"
+      @input="isDirty = true; scheduleDraftWrite()"
     />
 
     <!-- NoteEditor inside v-if guard for proper mount/unmount lifecycle (RESEARCH.md Open Question 3) -->
     <NoteEditor
       v-if="visible && !isDecrypting"
       v-model="editorContent"
-      @update:model-value="trigger()"
+      @update:model-value="isDirty = true; scheduleDraftWrite()"
     />
+
+    <template #actions>
+      <Button
+        label="Save"
+        icon="pi pi-check"
+        :disabled="!isDirty || isSaving"
+        :loading="isSaving"
+        @click="onSave"
+      />
+    </template>
   </BaseMobileDialog>
 </template>
