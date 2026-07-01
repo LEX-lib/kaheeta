@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-pending
-last_updated: "2026-07-01T04:20:00.000Z"
+status: phase-planned
+last_updated: "2026-07-01T04:45:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 4
+  total_plans: 6
   completed_plans: 4
-  percent: 75
+  percent: 67
 current_phase: 4
 current_phase_name: Manual Save with Draft Recovery
 ---
@@ -24,7 +24,7 @@ current_phase_name: Manual Save with Draft Recovery
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** v1 (Phases 1–3) complete. Phase 4 (Manual Save with Draft Recovery) — CONTEXT.md captured (4 decisions locked); ready to plan. Next: `/gsd:plan-phase 4`.
+**Current focus:** v1 (Phases 1–3) complete. Phase 4 (Manual Save with Draft Recovery) — PLANNED: 2 plans, verified by plan-checker (0 blockers). Ready to execute. Next: `/gsd:execute-phase 4`.
 
 ## Workflow State
 
@@ -42,10 +42,14 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 ## Active Phase
 
-**Phase 4: Manual Save with Draft Recovery** — ◆ Context gathered (added 2026-07-01; `04-CONTEXT.md` written, ready to plan)
+**Phase 4: Manual Save with Draft Recovery** — ◆ Planned (2 plans, verified; ready to execute)
 Goal: Replace transparent auto-save with explicit manual Save; stash unsaved edits locally so an accidental refresh or dialog close doesn't lose work, with draft recovery on reopen. Requirements: EDIT-01 (manual save, supersedes NOTE-04), EDIT-02 (draft persistence + recovery).
 Locked decisions (04-CONTEXT.md): D-01 localStorage (`kaheeta:note-draft:<id>` / `:new`); D-02 draft encrypted at rest with the same AES key; D-03 Restore/Discard prompt on reopen when a newer draft exists; D-04 explicit Save (dirty-only) commits + clears draft, close keeps draft.
-Next: `/gsd:plan-phase 4`.
+Plans:
+- [ ] 04-01 (Wave 1, TDD) — pure `noteDraft.ts` module (draftKey/saveDraft/loadDraft/clearDraft/isDraftNewer, encrypted at rest) + Vitest [EDIT-02]
+- [ ] 04-02 (Wave 2, depends 04-01) — rewire `ManageNote.vue`: remove useAutoSave→manual Save + debounced encrypted draft writes + Restore/Discard recovery; `clearDraft` on delete in `NotesTab.vue` [EDIT-01, EDIT-02]
+Plan-check: 0 blockers, 2 warnings (both fixed in-place — RED-verify now asserts the ciphertext test exists; 04-02 asserts onBeforeUnmount draft flush).
+Next: `/gsd:execute-phase 4`.
 
 **Phase 3: Title Search** — ✓ Complete (1/1 plans, verified 5/5 + human UAT 3/3 approved, 2026-07-01)
 Goal: Users can instantly filter the notes list by typing in a search box — results narrow in real time as they type, with no server round-trip.
