@@ -75,7 +75,15 @@ export async function saveDraft(
     const blob = JSON.stringify({ title: payload.title, body: payload.body })
     const content = await encryptBody(key, blob)
     const stored: StoredDraft = { content, savedAt: new Date().toISOString() }
-    localStorage.setItem(draftKey(noteId), JSON.stringify(stored))
+    try
+    {
+        localStorage.setItem(draftKey(noteId), JSON.stringify(stored))
+    }
+    catch (e)
+    {
+        // Quota exceeded / private-browsing restriction — draft persistence is best-effort.
+        console.warn('saveDraft: localStorage write failed', e)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -164,5 +172,6 @@ export function isDraftNewer(
     const draftTime = Date.parse(savedAt)
     const savedTime = Date.parse(recordUpdated)
     if (Number.isNaN(draftTime)) return false
+    if (Number.isNaN(savedTime)) return true // unparseable saved baseline → draft wins
     return draftTime > savedTime
 }
