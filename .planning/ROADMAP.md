@@ -46,22 +46,24 @@ Plans:
 
 ### Phase 2: Encryption Layer
 
-**Goal:** Every note body is encrypted with AES-GCM in the browser before it is written to PocketBase, and decrypted transparently on read — the user experiences no change in workflow and the server never receives or stores plaintext.
+**Goal:** Every note body AND snippet is encrypted with AES-GCM (256-bit) in the browser before it is written to PocketBase, and decrypted transparently on read — the user experiences no change in workflow and the server never receives or stores plaintext.
 
 **Depends on:** Phase 1
 
 **Requirements:** ENC-01, ENC-02, ENC-03
 
 **Success criteria:**
-- [ ] Creating or editing a note stores an unreadable ciphertext string in the `body` field of `kaheeta_notes` (verifiable in PocketBase Admin UI)
+- [ ] Creating or editing a note stores an unreadable ciphertext string in the `body` AND `snippet` fields of `kaheeta_notes` (verifiable in PocketBase Admin UI)
 - [ ] Opening an existing encrypted note decrypts the body in-browser and displays the original rich-text content without any user action
 - [ ] The user is never prompted for a separate encryption password — key derivation is fully transparent
-- [ ] Notes created before encryption (Phase 1 plaintext bodies) are handled gracefully — either migrated on first edit or detected and rendered as plaintext without crashing
+- [ ] Notes created before encryption (Phase 1 plaintext bodies) are handled gracefully — detected and rendered without crashing, then upgraded to ciphertext on next edit (lazy migration)
 
-**Plans:**
-- [ ] Plan 1 — Crypto primitives: build `src/lib/wallecx/notesCrypto.ts` exposing `deriveKey(authToken, salt): Promise<CryptoKey>`, `encryptBody(key, json): Promise<string>` (Base64 AES-GCM ciphertext + IV), and `decryptBody(key, ciphertext): Promise<string>` — all using `window.crypto.subtle`; unit-test each primitive in `notesCrypto.test.ts`
-- [ ] Plan 2 — Per-user salt + key lifecycle: add a `note_salt` field to the PocketBase `users` collection (or a separate `kaheeta_user_settings` record); on first note write, generate a random 16-byte salt, persist it, and derive the AES-GCM key via PBKDF2 from `pb.authStore.token + salt`; cache the derived `CryptoKey` in a module-scoped ref for the session so PBKDF2 runs once per login
-- [ ] Plan 3 — Encrypt-on-write / decrypt-on-read integration: update `ManageNote.vue` auto-save to call `encryptBody()` before the PocketBase write; update the note load path to call `decryptBody()` after fetch; add plaintext-fallback detection (try decrypt, catch → treat as legacy plaintext); surface a `toast.error()` if decryption fails without crashing the component
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Crypto primitives (Wave 1, TDD): `src/lib/wallecx/notesCrypto.ts` exposing `deriveKey(userId, salt)`, `encryptBody(key, plaintext)`, `decryptBody(key, b64)` via `window.crypto.subtle` (AES-GCM-256 + PBKDF2, per-call IV, loop-based Base64); full unit tests in `notesCrypto.test.ts`
+- [ ] 02-02-PLAN.md — Per-user salt + key lifecycle (Wave 2, depends 01): `useNotesCrypto` composable derives the key from `user.id` + a 16-byte salt stored in a new `kaheeta_user_settings` collection (D-05), caches the CryptoKey module-scoped per session (D-03), clears on logout; NEVER uses the rotating token (D-01)
+- [ ] 02-03-PLAN.md — Encrypt-on-write / decrypt-on-read integration (Wave 2, depends 01+02): `ManageNote.vue` encrypts body+snippet before write and decrypts on load; `NotesTab.vue` decrypts list snippets; lazy plaintext fallback with `toast.error()` on failure, no crash (D-10, resolves WR-01)
 
 ---
 
@@ -118,4 +120,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-06-30 — Phase 1 planning complete (4 plans, 2 waves)*
+*Last updated: 2026-07-01 — Phase 2 planning complete (3 plans, 2 waves)*
