@@ -1,9 +1,9 @@
 # Roadmap: Kaheeta Notes
 
-**Total phases:** 4
+**Total phases:** 5
 **Estimated completion:** 3 weeks (at 1 phase/week)
 **Granularity:** Standard
-**Coverage:** 13/13 requirements mapped (v1 complete; Phase 4 = post-v1 enhancement)
+**Coverage:** 13/13 requirements mapped (v1 complete; Phases 4–5 = post-v1 enhancements)
 
 ---
 
@@ -13,6 +13,7 @@
 - [x] **Phase 2: Encryption Layer** — Note bodies are encrypted client-side before hitting PocketBase; decrypted transparently on read
 - [x] **Phase 3: Title Search** — Users can instantly filter their notes list by title
 - [x] **Phase 4: Manual Save with Draft Recovery** — Explicit save + local draft persistence so accidental refresh/close never loses edits (completed 2026-07-01)
+- [ ] **Phase 5: Fix Tiptap Editor Visuals** — Correct bullet/list rendering, consistent formatting, and always-visible text caret in the note editor
 
 ---
 
@@ -169,6 +170,28 @@ Plans:
 | EDIT-02 | Unsaved edits persisted to local/sessionStorage + recovered after refresh/close | Phase 4 | Done |
 
 **Coverage: 13/13 requirements mapped. No orphans.** (NOTE-04 auto-save superseded by EDIT-01 in Phase 4.)
+
+### Phase 5: Fix Tiptap Editor Visuals
+
+**Goal:** The Tiptap rich-text editor renders correctly and predictably in `NoteEditor.vue` across light and dark themes. Three known defects are fixed: (1) bullet (and ordered) lists render with visible markers and correct indentation instead of appearing as plain lines; (2) inline/block formatting (headings, bold, italic, links, spacing) renders consistently rather than inheriting stray or missing styles; (3) the text caret is always visible while editing. This is a visual/CSS-correctness pass over the existing editor — no data-model or persistence changes.
+
+**Depends on:** Phase 1 (NoteEditor.vue / Tiptap setup); does not depend on Phases 2–4.
+
+**Requirements:** Hardens NOTE-01/NOTE-02 (rich-text body editing quality). No new functional requirement — editor-polish/bugfix phase.
+
+**Success criteria:**
+
+- [ ] Creating a bullet list in the editor shows visible bullet markers with correct indentation; nested lists indent; ordered lists show numbers. Renders the same on reopen.
+- [ ] Headings, bold, italic, and links render with consistent, intentional styling (no unexpected margins, font inheritance, or theme bleed) in both light and dark mode.
+- [ ] The text caret is visible at all times while editing, in both light and dark themes (correct `caret-color`/contrast), including on empty lines and inside list items.
+- [ ] No regression: existing notes still load, edit, save, and decrypt correctly (Phases 1–4 behavior intact).
+
+**UI hint:** yes
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 5 to break down)
 
 ---
 

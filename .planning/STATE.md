@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: milestone-complete
-last_updated: "2026-07-01T14:50:00.000Z"
+status: phase-pending
+last_updated: "2026-07-01T15:05:00.000Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 6
   completed_plans: 6
-  percent: 100
-current_phase: 4
-current_phase_name: Manual Save with Draft Recovery
+  percent: 80
+current_phase: 5
+current_phase_name: Fix Tiptap Editor Visuals
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: Manual Save with Draft Recovery
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** ✓ v1 milestone COMPLETE (4/4 phases, 6/6 plans, 13/13 requirements). Phase 4 (Manual Save with Draft Recovery) done 2026-07-01 — verified 9/9 + human UAT 5/5 approved. Next: start a new milestone (`/gsd:new-milestone`) or pick up backlog work.
+**Current focus:** Phases 1–4 complete (13/13 v1 requirements shipped). Phase 5 (Fix Tiptap Editor Visuals) ADDED 2026-07-01 as a post-v1 editor-polish/bugfix phase — bullet lists not rendering, inconsistent formatting, intermittently invisible text caret. ○ Not yet planned. Next: `/gsd:plan-phase 5` (consider `/gsd:discuss-phase 5` first — likely a CSS/Tiptap-extension pass on `NoteEditor.vue`).
 
 ## Workflow State
 
@@ -39,6 +39,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | Phase 2 | ✓ Complete — 3/3 plans, verified 9/9, code-review WR-01/WR-03 fixed |
 | Phase 3 | ✓ Complete — 1/1 plans, verified 5/5 + human UAT 3/3, LIST-03 done |
 | Phase 4 | ✓ Complete — 2/2 plans, verified 9/9 + human UAT 5/5, code-review CR-01/02/03 + WR-01..04 fixed |
+| Phase 5 | ○ Pending — added 2026-07-01, not yet planned (fix Tiptap editor visuals: bullets, formatting, caret) |
 
 ## Active Phase
 
@@ -103,6 +104,7 @@ the current milestone rather than close it + open v2.
 
 ### Roadmap Evolution
 - Phase 4 added 2026-07-01: Manual Save with Draft Recovery (EDIT-01/EDIT-02, supersedes NOTE-04). Extends v1 rather than opening a v2 milestone.
+- Phase 5 added 2026-07-01: Fix Tiptap Editor Visuals (bullets not rendering, inconsistent formatting, invisible text caret). Post-v1 editor-polish/bugfix; no new functional requirement — hardens NOTE-01/NOTE-02. Extends the milestone rather than opening v2.
 
 **Session:** 2026-07-01 — Planned + executed + verified Phase 3 (03-01). Commits: test RED (bb6ed8e),
 feat GREEN (5fe8c3e), feat Task 2 UI (252622d), docs (ea60fff), IconField refactor (2f33283).
