@@ -22,7 +22,7 @@
 
 - [ ] **LIST-01**: Notes displayed in a flat list sorted by last-modified (newest first)
 - [ ] **LIST-02**: Each list item shows: title, created date, and a plaintext preview snippet of the body
-- [ ] **LIST-03**: User can search notes by title (client-side filter, instant)
+- [x] **LIST-03**: User can search notes by title (client-side filter, instant)
 
 ### Navigation
 
@@ -74,7 +74,7 @@
 | ENC-03 | Phase 2 | Done |
 | LIST-01 | Phase 1 | Pending |
 | LIST-02 | Phase 1 | Pending |
-| LIST-03 | Phase 3 | Pending |
+| LIST-03 | Phase 3 | Done |
 | NAV-01 | Phase 1 | Pending |
 
 **Coverage:**

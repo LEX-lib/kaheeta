@@ -106,7 +106,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Core Notes CRUD | 4/4 | Complete | 2026-06-30 |
 | 2. Encryption Layer | 3/3 | Complete | 2026-07-01 |
-| 3. Title Search | 1/1 | Executed — UAT pending | - |
+| 3. Title Search | 1/1 | Complete | 2026-07-01 |
 
 ---
 
@@ -124,11 +124,11 @@ Plans:
 | ENC-01 | Body encrypted client-side (AES-GCM 256-bit) before PocketBase write | Phase 2 | Done |
 | ENC-02 | Key derived from user session via PBKDF2 + per-user salt | Phase 2 | Done |
 | ENC-03 | Decryption in-browser on read — no plaintext over the wire | Phase 2 | Done |
-| LIST-03 | Title search — client-side filter, instant | Phase 3 | Executed — UAT pending |
+| LIST-03 | Title search — client-side filter, instant | Phase 3 | Done |
 
 **Coverage: 11/11 v1 requirements mapped. No orphans.**
 
 ---
 
 *Roadmap created: 2026-06-30*
-*Last updated: 2026-07-01 — Phase 3 (Title Search) EXECUTED: 1/1 plans (03-01), automated verify 5/5. LIST-03 code-complete but awaiting human browser UAT (03-HUMAN-UAT.md) before milestone close.*
+*Last updated: 2026-07-01 — Phase 3 (Title Search) COMPLETE: 1/1 plans (03-01), verified 5/5 + human UAT 3/3 approved. LIST-03 done. All 11/11 v1 requirements satisfied. Milestone ready for close.*
