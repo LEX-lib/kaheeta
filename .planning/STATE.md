@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-planned
-last_updated: "2026-07-01T04:45:00.000Z"
+status: phase-verification-pending
+last_updated: "2026-07-01T14:40:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 3
@@ -24,7 +24,7 @@ current_phase_name: Manual Save with Draft Recovery
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** v1 (Phases 1–3) complete. Phase 4 (Manual Save with Draft Recovery) — PLANNED: 2 plans, verified by plan-checker (0 blockers). Ready to execute. Next: `/gsd:execute-phase 4`.
+**Current focus:** Phase 4 (Manual Save with Draft Recovery) — EXECUTED: 2/2 plans done, 143 tests green, type-check clean. Code review 3 blockers + 4 warnings all fixed. Verifier: 9/9 must-haves VERIFIED, status **human_needed** (5 manual UAT items in `04-HUMAN-UAT.md`). Phase held pending until human UAT approved. Next: manually test the 5 items, then confirm to complete the phase.
 
 ## Workflow State
 
@@ -38,18 +38,19 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | Phase 1 | ✓ Complete — 4/4 plans, verified 5/5, code review criticals fixed |
 | Phase 2 | ✓ Complete — 3/3 plans, verified 9/9, code-review WR-01/WR-03 fixed |
 | Phase 3 | ✓ Complete — 1/1 plans, verified 5/5 + human UAT 3/3, LIST-03 done |
-| Phase 4 | ○ Pending — added 2026-07-01, not yet planned (EDIT-01/02, supersedes NOTE-04) |
+| Phase 4 | ◆ Executed — 2/2 plans, verified 9/9, code-review CR-01/02/03 + WR-01..04 fixed; awaiting human UAT (5 items) |
 
 ## Active Phase
 
-**Phase 4: Manual Save with Draft Recovery** — ◆ Planned (2 plans, verified; ready to execute)
+**Phase 4: Manual Save with Draft Recovery** — ◆ Executed, awaiting human UAT (2/2 plans, verified 9/9)
 Goal: Replace transparent auto-save with explicit manual Save; stash unsaved edits locally so an accidental refresh or dialog close doesn't lose work, with draft recovery on reopen. Requirements: EDIT-01 (manual save, supersedes NOTE-04), EDIT-02 (draft persistence + recovery).
 Locked decisions (04-CONTEXT.md): D-01 localStorage (`kaheeta:note-draft:<id>` / `:new`); D-02 draft encrypted at rest with the same AES key; D-03 Restore/Discard prompt on reopen when a newer draft exists; D-04 explicit Save (dirty-only) commits + clears draft, close keeps draft.
 Plans:
-- [ ] 04-01 (Wave 1, TDD) — pure `noteDraft.ts` module (draftKey/saveDraft/loadDraft/clearDraft/isDraftNewer, encrypted at rest) + Vitest [EDIT-02]
-- [ ] 04-02 (Wave 2, depends 04-01) — rewire `ManageNote.vue`: remove useAutoSave→manual Save + debounced encrypted draft writes + Restore/Discard recovery; `clearDraft` on delete in `NotesTab.vue` [EDIT-01, EDIT-02]
-Plan-check: 0 blockers, 2 warnings (both fixed in-place — RED-verify now asserts the ciphertext test exists; 04-02 asserts onBeforeUnmount draft flush).
-Next: `/gsd:execute-phase 4`.
+- [x] 04-01 (Wave 1, TDD) — pure `noteDraft.ts` module (draftKey/saveDraft/loadDraft/clearDraft/isDraftNewer, encrypted at rest) + Vitest [EDIT-02] — RED fb0f867 → GREEN 50286af, 26→29 tests
+- [x] 04-02 (Wave 2, depends 04-01) — rewired `ManageNote.vue`: removed useAutoSave→manual Save + debounced encrypted draft writes + Restore/Discard recovery; `clearDraft` on delete in `NotesTab.vue` [EDIT-01, EDIT-02]
+Code review: 3 blockers (CR-01 async unmount flush, CR-02 post-save race, CR-03 dismiss-blanks-editor) + 4 warnings — all fixed (d20f55f, 6491f3d, 0819bdf, 56b3c3b, 45f8578, dce598a). 143 tests green.
+Verification: 9/9 must-haves VERIFIED; status human_needed — 5 manual UAT items in `04-HUMAN-UAT.md` (last-keystroke durability, Restore/Discard interaction, draft-kept-on-close, new-note lifecycle, ciphertext-at-rest). NOT marked complete until human UAT approved (EDIT-01/EDIT-02 stay Pending in ROADMAP).
+Next: manually test the 5 UAT items → approve → phase completes (v1 milestone done).
 
 **Phase 3: Title Search** — ✓ Complete (1/1 plans, verified 5/5 + human UAT 3/3 approved, 2026-07-01)
 Goal: Users can instantly filter the notes list by typing in a search box — results narrow in real time as they type, with no server round-trip.
