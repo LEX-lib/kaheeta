@@ -718,21 +718,16 @@ No blocking missing dependencies.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Is PBKDF2 the correct KDF, or should HKDF be used instead?**
-   - What we know: PBKDF2 is designed for low-entropy password inputs. `user.id` has ~90 bits of entropy — higher than a typical password.
-   - What's unclear: HKDF is faster and designed for high-entropy inputs. It would make key derivation near-instant (~1ms). However, it provides no brute-force resistance (no iteration count).
-   - Recommendation: Use PBKDF2 anyway. The "no second password" constraint means the key material (`user.id`) IS the only secret; PBKDF2's slow iteration count is the only cost barrier for an attacker with the database. If speed matters more than security margin, HKDF is a valid alternative but should be a deliberate user decision.
+> All three resolved by 02-CONTEXT.md locked decisions (gathered 2026-07-01, post-research). CONTEXT wins where it conflicts with this file.
 
-2. **What happens when the user's password is reset via admin?**
-   - What we know: PocketBase password reset does NOT change the user's `id`. The `id` is permanent.
-   - What's unclear: Does the deployed PocketBase instance use any custom auth hooks that could re-create users with new ids?
-   - Recommendation: Treat as out of scope. Document in comments that the salt and derived key are tied to `user.id` which survives password resets.
+1. **Is PBKDF2 the correct KDF, or should HKDF be used instead?** — **RESOLVED (D-02):** PBKDF2 (AES-GCM-256 via `window.crypto.subtle`). The "no second password" constraint (D-04) makes `user.id` the only secret, so PBKDF2's iteration cost is the sole brute-force barrier for an attacker with the database. HKDF not adopted.
+   - Detail: PBKDF2 suits low-entropy inputs; `user.id` has ~90 bits. HKDF would be near-instant but offers no iteration-count resistance — rejected given the id-only key material.
 
-3. **Should the `useNotesCrypto` composable be initialised eagerly on login, or lazily on first note write?**
-   - What we know: Lazy is simpler. Eager means the key is always ready before the user reaches the Notes tab.
-   - Recommendation: Lazy (on first `getOrDeriveKey()` call). Key derivation is fast once the salt is cached; the ~150ms PBKDF2 delay on first write is imperceptible during the debounced auto-save window.
+2. **What happens when the user's password is reset via admin?** — **RESOLVED (D-01, out of scope):** PocketBase password reset does NOT change `user.id`; the id is the permanent key material and survives resets. Assumption A1 (no custom auth hook recreates users with new ids) to be confirmed at execution against the live instance.
+
+3. **Should the `useNotesCrypto` composable be initialised eagerly on login, or lazily on first note write?** — **RESOLVED (D-03):** Lazy — key derived on first `getOrDeriveKey()` call, then cached module-scoped for the session. The ~150ms first-write PBKDF2 delay is imperceptible within the debounced auto-save window.
 
 ---
 

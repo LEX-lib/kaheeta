@@ -26,6 +26,7 @@
 **Requirements:** NOTE-01, NOTE-02, NOTE-03, NOTE-04, LIST-01, LIST-02, NAV-01
 
 **Success criteria:**
+
 - [ ] User taps Notes in the main wallet nav and lands on a flat list of their notes sorted newest-first
 - [ ] User creates a new note, types a title and rich-text body (bold, italic, headings, bullet list, link), and it appears in the list after saving
 - [ ] User opens an existing note, edits it, and changes are auto-saved without a Save button
@@ -35,6 +36,7 @@
 **Plans:** 4 plans
 
 Plans:
+
 - [x] 01-PLAN-01.md — PocketBase collection schema (user_setup) + Note type definition + notesMapper + Wave 0 tests
 - [x] 01-PLAN-02.md — Tiptap v3 package install + useAutoSave composable + NoteEditor.vue + WallecxSkeleton note-row variant + CSS
 - [x] 01-PLAN-03.md — NotesTab.vue (list, empty state, delete) + ManageNote.vue (create/edit, auto-save, dirty guard)
@@ -53,6 +55,7 @@ Plans:
 **Requirements:** ENC-01, ENC-02, ENC-03
 
 **Success criteria:**
+
 - [ ] Creating or editing a note stores an unreadable ciphertext string in the `body` AND `snippet` fields of `kaheeta_notes` (verifiable in PocketBase Admin UI)
 - [ ] Opening an existing encrypted note decrypts the body in-browser and displays the original rich-text content without any user action
 - [ ] The user is never prompted for a separate encryption password — key derivation is fully transparent
@@ -61,7 +64,12 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 02-01-PLAN.md — Crypto primitives (Wave 1, TDD): `src/lib/wallecx/notesCrypto.ts` exposing `deriveKey(userId, salt)`, `encryptBody(key, plaintext)`, `decryptBody(key, b64)` via `window.crypto.subtle` (AES-GCM-256 + PBKDF2, per-call IV, loop-based Base64); full unit tests in `notesCrypto.test.ts`
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 02-02-PLAN.md — Per-user salt + key lifecycle (Wave 2, depends 01): `useNotesCrypto` composable derives the key from `user.id` + a 16-byte salt stored in a new `kaheeta_user_settings` collection (D-05), caches the CryptoKey module-scoped per session (D-03), clears on logout; NEVER uses the rotating token (D-01)
 - [ ] 02-03-PLAN.md — Encrypt-on-write / decrypt-on-read integration (Wave 2, depends 01+02): `ManageNote.vue` encrypts body+snippet before write and decrypts on load; `NotesTab.vue` decrypts list snippets; lazy plaintext fallback with `toast.error()` on failure, no crash (D-10, resolves WR-01)
 
@@ -76,12 +84,14 @@ Plans:
 **Requirements:** LIST-03
 
 **Success criteria:**
+
 - [ ] A search input is visible on the Notes list view
 - [ ] Typing in the search box instantly filters notes to those whose title contains the query (case-insensitive, client-side)
 - [ ] Clearing the search box restores the full list
 - [ ] Search operates on the already-loaded notes array — no additional PocketBase request is made
 
 **Plans:**
+
 - [ ] Plan 1 — Search state + filter logic: add a `searchQuery` ref to `NotesTab.vue`, derive `filteredNotes` as a `computed()` that filters the loaded notes array by `note.title.toLowerCase().includes(query)`, and ensure the list renders `filteredNotes` rather than the raw array
 - [ ] Plan 2 — Search UI: add a PrimeVue `<InputText>` with a clear button (`<Button icon="pi pi-times">`) above the notes list; debounce is not needed (client-side filter is instant); wire `v-model` to `searchQuery`; show an empty-state message when `filteredNotes.length === 0` and a query is active
 
