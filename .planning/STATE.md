@@ -16,16 +16,17 @@ current_phase_name: Fix Tiptap Editor Visuals
 
 # Project State
 
-**Last updated:** 2026-07-01
-**Current milestone:** v1 — Notes Feature
+**Last updated:** 2026-07-02
+**Current milestone:** ✅ v1.0 Notes — SHIPPED 2026-07-02 (next milestone not yet scoped)
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-30)
+See: `.planning/PROJECT.md` (updated 2026-07-02)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** ✓ ALL 5 phases COMPLETE. Phase 5 (Fix Tiptap Editor Visuals) done 2026-07-02 — verified 10/10 (status passed) + human UAT 7/7 both themes; OrderedList added, list/typography CSS restored, global amber caret + caret-padding gap fix (UAT check #4). Code review 0 blockers. v1 milestone + editor polish shipped. Next: `/gsd:complete-milestone` to archive, or `/gsd:new-milestone` for v2 (folders, tags, sharing, pin/favourite, richer editor blocks).
-⚠ Recovery note: the plan-phase commit (aca9b24) truncated ROADMAP.md 199→16 lines (planner overwrote instead of appended); restored from 6ae07a2 and re-applied Phase 5 completion by hand 2026-07-02.
+**Current focus:** ✅ v1.0 milestone CLOSED (Phases 1–5, 13 plans). Notes feature shipped: CRUD, client-side AES-GCM encryption, title search, manual save + encrypted draft recovery, correct editor visuals. Archived to `.planning/milestones/v1.0-*`; tag `v1.0`. Next: `/gsd:new-milestone` to scope v2 (full-text search, pin/tags/folders, cross-linking, richer editor blocks).
+Deferred at close (non-blocking): WR-01 dead placeholder CSS; Phase 03/04 HUMAN-UAT files linger with status passed / 0 pending.
+⚠ Process note: two GSD write-verb corruptions recovered this milestone — `state.*` corrupts STATE.md, and `plan-phase` truncated ROADMAP.md (restored from git). Maintain planning files by hand.
 
 ## Workflow State
 
