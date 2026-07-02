@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-planned
-last_updated: "2026-07-01T15:40:00.000Z"
+status: milestone-complete
+last_updated: "2026-07-02T09:40:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 6
-  completed_plans: 6
-  percent: 80
+  completed_phases: 5
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
 current_phase: 5
 current_phase_name: Fix Tiptap Editor Visuals
 ---
@@ -24,7 +24,8 @@ current_phase_name: Fix Tiptap Editor Visuals
 See: `.planning/PROJECT.md` (updated 2026-06-30)
 
 **Core value:** Users can capture private, richly-formatted notes knowing the server stores only ciphertext — their content is readable only on their own device.
-**Current focus:** Phases 1–4 complete (13/13 v1 requirements shipped). Phase 5 (Fix Tiptap Editor Visuals) — ◆ PLANNED 2026-07-01: 3 plans in 2 waves, verified by plan-checker (0 blockers, 0 warnings, all 12 dimensions). Root cause: Tailwind v4 preflight strips `ul`/`ol`/heading/`p` styles; editor CSS has no list rules + caret-color only in dark mode; no OrderedList extension. Plans: Wave 1 parallel — 05-01 (add `@tiptap/extension-ordered-list` to NoteEditor.vue + numbered-list toolbar button; extract snippet gen to pure tested `noteSnippet.ts` incl. OrderedList; rewire ManageNote.vue) + 05-02 (editor CSS: list markers/indent, heading/paragraph rhythm, global amber caret); Wave 2 — 05-03 (automated gate + blocking human visual UAT, both themes). Next: `/gsd:execute-phase 5`.
+**Current focus:** ✓ ALL 5 phases COMPLETE. Phase 5 (Fix Tiptap Editor Visuals) done 2026-07-02 — verified 10/10 (status passed) + human UAT 7/7 both themes; OrderedList added, list/typography CSS restored, global amber caret + caret-padding gap fix (UAT check #4). Code review 0 blockers. v1 milestone + editor polish shipped. Next: `/gsd:complete-milestone` to archive, or `/gsd:new-milestone` for v2 (folders, tags, sharing, pin/favourite, richer editor blocks).
+⚠ Recovery note: the plan-phase commit (aca9b24) truncated ROADMAP.md 199→16 lines (planner overwrote instead of appended); restored from 6ae07a2 and re-applied Phase 5 completion by hand 2026-07-02.
 
 ## Workflow State
 
@@ -39,9 +40,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-30)
 | Phase 2 | ✓ Complete — 3/3 plans, verified 9/9, code-review WR-01/WR-03 fixed |
 | Phase 3 | ✓ Complete — 1/1 plans, verified 5/5 + human UAT 3/3, LIST-03 done |
 | Phase 4 | ✓ Complete — 2/2 plans, verified 9/9 + human UAT 5/5, code-review CR-01/02/03 + WR-01..04 fixed |
-| Phase 5 | ◆ Planned — 3 plans (2 waves), plan-checker 0 issues 2026-07-01; ready to execute |
+| Phase 5 | ✓ Complete — 3 plans, verified 10/10 + human UAT 7/7 both themes, code review 0 blockers (2026-07-02) |
 
 ## Active Phase
+
+**Phase 5: Fix Tiptap Editor Visuals** — ✓ Complete (3/3 plans, verified 10/10 + human UAT 7/7 both themes, 2026-07-02)
+Goal: Editor renders correctly across light/dark — fix bullet/numbered/nested lists, heading/paragraph spacing, and always-visible caret. Visual/CSS pass; no data-model change. Decisions: D-01 bullets+numbered+nesting (OrderedList in NoteEditor.vue + noteSnippet.ts); D-02 minimal typography (no blockquote/code/hr); D-03 amber caret both themes.
+Plans:
+- [x] 05-01 (Wave 1) — `@tiptap/extension-ordered-list` + numbered-list toolbar button; extracted pure tested `noteSnippet.ts` (incl. OrderedList round-trip); rewired ManageNote.vue [D-01]
+- [x] 05-02 (Wave 1) — editor CSS in `wallecx-overrides.css`: list markers/indent, heading/paragraph rhythm, global amber caret [D-02, D-03]
+- [x] 05-03 (Wave 2) — automated gate + blocking human visual UAT (7/7 both themes); one gap fixed (caret padding vs focus outline, UAT check #4)
+Code review: 0 blockers, 1 pre-existing warning (WR-01 dead placeholder CSS — no @tiptap/extension-placeholder installed; deferred, out of scope).
+⚠ ROADMAP.md was truncated 199→16 lines by the plan-phase commit (aca9b24, planner overwrote instead of appended); restored from 6ae07a2 and re-applied Phase 5 completion by hand.
 
 **Phase 4: Manual Save with Draft Recovery** — ✓ Complete (2/2 plans, verified 9/9 + human UAT 5/5 approved, 2026-07-01)
 Goal: Replace transparent auto-save with explicit manual Save; stash unsaved edits locally so an accidental refresh or dialog close doesn't lose work, with draft recovery on reopen. Requirements: EDIT-01 (manual save, supersedes NOTE-04), EDIT-02 (draft persistence + recovery).
