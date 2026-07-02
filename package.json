@@ -33,6 +33,7 @@
     "@tiptap/extension-italic": "^3.27.1",
     "@tiptap/extension-link": "^3.27.1",
     "@tiptap/extension-list-item": "^3.27.1",
+    "@tiptap/extension-ordered-list": "^3.27.1",
     "@tiptap/extension-paragraph": "^3.27.1",
     "@tiptap/extension-text": "^3.27.1",
     "@tiptap/pm": "^3.27.1",

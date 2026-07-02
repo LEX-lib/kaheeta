@@ -8,6 +8,7 @@ import Bold from '@tiptap/extension-bold'
 import Italic from '@tiptap/extension-italic'
 import Heading from '@tiptap/extension-heading'
 import BulletList from '@tiptap/extension-bullet-list'
+import OrderedList from '@tiptap/extension-ordered-list'
 import ListItem from '@tiptap/extension-list-item'
 import Link from '@tiptap/extension-link'
 import HardBreak from '@tiptap/extension-hard-break'
@@ -38,6 +39,7 @@ const editor = useEditor({
     Italic,
     Heading.configure({ levels: [1, 2, 3] }),
     BulletList,
+    OrderedList,
     ListItem,
     HardBreak,
     Link.configure({ openOnClick: false, protocols: ['http', 'https'] }),
@@ -161,6 +163,16 @@ function promptLink() {
       @click="editor?.chain().focus().toggleBulletList().run()"
     >
       <iconify-icon icon="mdi:format-list-bulleted" width="18" height="18" aria-hidden="true" />
+    </Button>
+    <Button
+      text
+      rounded
+      size="small"
+      :severity="editor?.isActive('orderedList') ? 'primary' : 'secondary'"
+      aria-label="Numbered list"
+      @click="editor?.chain().focus().toggleOrderedList().run()"
+    >
+      <iconify-icon icon="mdi:format-list-numbered" width="18" height="18" aria-hidden="true" />
     </Button>
     <Button
       text
