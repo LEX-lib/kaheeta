@@ -254,6 +254,10 @@
   font-size: 1rem;
   line-height: 1.6;
   min-height: 200px;
+  /* Inner padding so text and the caret clear the content box edge. Without it,
+   * the caret at column 0 sits flush against the browser's default focus outline
+   * on the contenteditable and is hard to see (Phase 5 UAT check #4). */
+  padding: 0.5rem 0.75rem;
   /* D-03: amber caret globally — visible in light AND dark mode. The
    * .my-app-dark .ProseMirror rule below also sets this (unchanged,
    * harmless redundancy) so the dark-drawer caret is unaffected. */
