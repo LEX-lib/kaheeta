@@ -272,6 +272,36 @@
   font-weight: 600;
 }
 
+/* List markers + indentation (light + dark) — restore styles stripped by Tailwind v4 preflight.
+ * Preflight zeroes list-style, padding, and margin on ul/ol globally. These rules restore
+ * marker visibility and left indentation inside the editor. Nested lists indent a further
+ * level automatically because the same padding-left applies to any inner ul/ol.
+ * Markers inherit the text color so no dark-mode color remap is needed. */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.ProseMirror li {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+
+/* ListItem wraps its content in a paragraph node — collapse its margin so items
+ * are not double-spaced. The li itself carries the small vertical rhythm above. */
+.ProseMirror li > p {
+  margin: 0;
+}
+
 /* Link color — light mode */
 .ProseMirror a {
   color: var(--color-brand-primary);
