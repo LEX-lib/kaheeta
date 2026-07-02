@@ -9,17 +9,7 @@ import { useNotesCrypto } from '@/composables/useNotesCrypto'
 import { useToast } from '@/composables/useToast'
 import { saveDraft, loadDraft, clearDraft, isDraftNewer } from '@/lib/wallecx/noteDraft'
 import type { Note } from '@/types/wallecx/notes/types'
-import { generateText } from '@tiptap/core'
-import Document from '@tiptap/extension-document'
-import Paragraph from '@tiptap/extension-paragraph'
-import Text from '@tiptap/extension-text'
-import Bold from '@tiptap/extension-bold'
-import Italic from '@tiptap/extension-italic'
-import Heading from '@tiptap/extension-heading'
-import BulletList from '@tiptap/extension-bullet-list'
-import ListItem from '@tiptap/extension-list-item'
-import Link from '@tiptap/extension-link'
-import HardBreak from '@tiptap/extension-hard-break'
+import { generateNoteSnippet } from '@/lib/wallecx/noteSnippet'
 import type { JSONContent } from '@tiptap/core'
 import BaseMobileDialog from './BaseMobileDialog.vue'
 import NoteEditor from './NoteEditor.vue'
@@ -227,11 +217,7 @@ onMounted(async () => {
 // ---------------------------------------------------------------------------
 async function saveFn(): Promise<void> {
   const rawContent = editorContent.value ?? { type: 'doc', content: [] }
-  const snippet = generateText(
-    rawContent,
-    [Document, Paragraph, Text, Bold, Italic, Heading, BulletList, ListItem, Link, HardBreak],
-    { blockSeparator: ' ' },
-  ).slice(0, 150)
+  const snippet = generateNoteSnippet(rawContent)
 
   // Encrypt-on-write (ENC-01, D-09): both body AND snippet are encrypted with
   // AES-GCM before they ever reach mapToUpdateNote / PocketBase. The server
