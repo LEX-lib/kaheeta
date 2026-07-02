@@ -28,10 +28,11 @@ Users can capture private, richly-formatted notes knowing the server stores only
 - ✓ Encryption key derived from user's session (PBKDF2 + per-user salt) — Validated in Phase 2
 - ✓ Notes section accessible via the main wallet nav — Validated in Phase 1
 - ✓ Explicit manual Save replaces auto-save; unsaved edits stashed as an encrypted local draft and recovered on reopen — Validated in Phase 4 (EDIT-01/EDIT-02)
+- ✓ Rich-text editor renders correctly across light/dark — bullet/numbered/nested lists, consistent heading/paragraph spacing, always-visible caret — Validated in Phase 5 (editor-visuals polish; hardens NOTE-01/NOTE-02)
 
 ### Active
 
-- (none — v1 milestone complete: 13/13 requirements delivered across Phases 1–4)
+- (none — v1 milestone complete: 13/13 requirements delivered across Phases 1–4, plus Phase 5 editor-visuals polish)
 
 ### Out of Scope
 
@@ -94,4 +95,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-01 — v1 milestone complete (Phases 1–4, 13/13 requirements). Notes feature shipped: CRUD, client-side encryption, title search, manual save with encrypted draft recovery.*
+*Last updated: 2026-07-02 — v1 complete (Phases 1–4, 13/13 requirements) + Phase 5 editor-visuals polish. Notes feature shipped: CRUD, client-side encryption, title search, manual save with encrypted draft recovery, and a correctly-rendering rich-text editor (lists, typography, caret).*
