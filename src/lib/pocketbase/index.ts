@@ -4,6 +4,10 @@ const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
 export const pb = new PocketBase(baseUrl);
 
+// SSO: pick up a session written by the sibling delveen.cc app before this
+// app's own router guards evaluate.
+pb.authStore.loadFromCookie(document.cookie);
+
 // Token expiry is passive — no event fires when the JWT lapses mid-session.
 // A 401 from the backend is the authoritative signal that the current token is
 // no longer accepted, so clear the auth store. The clear() fires authStore's

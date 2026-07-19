@@ -15,6 +15,14 @@ export const useAuthStore = defineStore("auth", () => {
 
   pb.authStore.onChange(() => {
     user.value = currentUser();
+    // SSO: mirror the token into a cookie scoped to .delveen.cc so the
+    // sibling app picks up login/logout on its next load or navigation.
+    document.cookie = pb.authStore.exportToCookie({
+      domain: ".delveen.cc",
+      secure: true,
+      sameSite: "Lax",
+      path: "/",
+    });
   });
 
   async function login(email: string, password: string) {
