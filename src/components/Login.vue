@@ -6,15 +6,20 @@ import { useAuthStore } from "@/stores/auth";
 import { useRouter, useRoute } from "vue-router";
 import { z } from "zod";
 import { Form, type FormSubmitEvent } from "@primevue/forms";
+import { useToast } from "@/composables/useToast";
+import { authErrorMessage } from "@/lib/pocketbase/authErrors";
 
 const auth = useAuthStore();
+const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 
 const remember = ref(false);
+const submitting = ref(false);
 
 const login = async ({ valid, values }: FormSubmitEvent) => {
-  if (!valid) return;
+  if (!valid || submitting.value) return;
+  submitting.value = true;
 
   try {
     await auth.login(values.email, values.password);
@@ -33,8 +38,10 @@ const login = async ({ valid, values }: FormSubmitEvent) => {
     // Use replace so login is not kept in history
     await router.replace(target);
   } catch (error) {
-    // Handle login error (e.g., show error message)
+    toast.error(authErrorMessage(error), { id: "login-error" });
     console.error("Login failed:", error);
+  } finally {
+    submitting.value = false;
   }
 };
 
@@ -168,8 +175,8 @@ const resolver = ref(
             <label for="remember" class="remember-label">Remember me</label>
           </div>
 
-          <button type="submit" class="login-submit">
-            Log in
+          <button type="submit" class="login-submit" :disabled="submitting">
+            {{ submitting ? "Signing in…" : "Log in" }}
             <span class="arrow">→</span>
           </button>
         </Form>
@@ -333,6 +340,11 @@ const resolver = ref(
 .login-submit:hover {
   background: var(--color-brand-accent-hover);
   transform: translateY(-1px);
+}
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: default;
+  transform: none;
 }
 .login-submit .arrow {
   transition: transform 0.18s ease;
