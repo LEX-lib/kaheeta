@@ -47,7 +47,7 @@ The backend is shared with the origin project (default `VITE_API_BASE_URL=https:
 
 All backend access goes through this layer — components never `new PocketBase()`:
 
-- `index.ts` exports the singleton `pb`. `stores/auth.ts` (Pinia) wraps `pb.authStore` for `isLoggedIn` / `login` / `logout`.
+- `index.ts` exports the singleton `pb`. `stores/auth.ts` (Pinia) wraps `pb.authStore` for `isLoggedIn` / `login` / `logout`. It also hosts **subdomain SSO** with `delveen.cc`: `syncAuthFromCookie()` treats the shared `.delveen.cc` `pb_auth` cookie as the source of truth on `*.delveen.cc` (called at module load and in `router.beforeEach`; skipped on localhost/previews).
 - **List reads use `instrumentedGetFullList<T>(collection, options)`** (`perfInstrument.ts`), not `pb.collection().getFullList()` directly. It records payload size / duration to `kaheeta:perf-*` and logs counts only (never record content).
 - **Writes go through `mapToUpdateX(record)` mappers** (`vaccinationMapper.ts`, `membershipMapper.ts`, `expenseMapper.ts`, `expenseBudgetMapper.ts`) that strip a typed record down to its writable fields before create/update.
 
