@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { pb } from "@/lib/pocketbase";
+import { pb, syncAuthFromCookie } from "@/lib/pocketbase";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,6 +29,10 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
+  // Re-sync from the shared cookie before every guard check so in-SPA
+  // navigation picks up a logout or login from the sibling app.
+  syncAuthFromCookie();
+
   // Token expiry is passive — no event fires when the JWT lapses. Clear a stale
   // session on navigation so the auth store (and navbar) reflect reality.
   if (!pb.authStore.isValid && pb.authStore.record) {
