@@ -16,10 +16,13 @@ import NoteEditor from './NoteEditor.vue'
 
 const props = defineProps<{
   note: Note | null
-}>()
-
-const emit = defineEmits<{
-  'note-saved': [updatedNote: Note]
+  /**
+   * Called after a background close-to-save write completes, so the list can
+   * refresh. This is a prop callback (not an emit) because the close is
+   * optimistic: the component unmounts before the async write resolves, and a
+   * post-unmount `emit` is a silent no-op in Vue.
+   */
+  saveHandler?: (note: Note) => void
 }>()
 
 const visible = defineModel<boolean>('visible', { required: true })
@@ -58,11 +61,8 @@ const isDecrypting = ref(true)
 // Dirty state — true when the user has made unsaved edits (EDIT-01, D-04).
 const isDirty = ref(false)
 
-// Save-in-flight flag — prevents concurrent saves and disables the Save button.
+// Save-in-flight flag — prevents concurrent saves and hides the close affordance.
 const isSaving = ref(false)
-
-// Template ref for closing the dialog without triggering the dirty guard (D-04).
-const dialogRef = ref<InstanceType<typeof BaseMobileDialog> | null>(null)
 
 // ---------------------------------------------------------------------------
 // Debounced draft write (EDIT-02, D-01/D-02)
@@ -244,29 +244,45 @@ async function saveFn(): Promise<void> {
       user: auth.user?.id,
     })
     Object.assign(record.value, created)
-    emit('note-saved', { ...record.value })
   } else {
     const updated = await pb
       .collection('kaheeta_notes')
       .update<Note>(record.value.id, payload)
     Object.assign(record.value, updated)
-    emit('note-saved', { ...record.value })
   }
 }
 
 // ---------------------------------------------------------------------------
-// Manual Save handler (D-04)
+// Close-to-save handler (D-04 successor)
+// Called by BaseMobileDialog (beforeClose) when the user closes the note.
+// Returns immediately so the dialog closes at once (optimistic close); the
+// PocketBase write then runs in the background via saveInBackground().
 // ---------------------------------------------------------------------------
-async function onSave(): Promise<void> {
+function handleBeforeClose(): void {
   if (!isDirty.value || isSaving.value) return
-  // Await the flush so no in-flight encrypted write can race clearDraft below
-  // and resurrect a draft after a successful save (CR-01/CR-02).
-  await flushDraftWrite()
+  void saveInBackground()
+}
+
+/**
+ * Background persist for close-to-save. Runs after the dialog has closed (the
+ * component may already be unmounted), so it must not touch torn-down internals:
+ * it only reads refs captured in this scope and reports the result through the
+ * `saveHandler` prop callback (an emit would be a no-op post-unmount).
+ *
+ * On failure: toast + keep the draft as a recovery safety net; the note simply
+ * isn't updated server-side this time.
+ */
+async function saveInBackground(): Promise<void> {
+  // Capture the callback NOW (still mounted) — this is read before the first await.
+  const notify = props.saveHandler
   isSaving.value = true
   // Capture the old id: for a new note, it changes from '' to the server-assigned
   // id after create, so we need to clear both the old `:new` key and the record id.
   const oldNoteId = record.value.id || null
   try {
+    // Await the flush so no in-flight encrypted draft write can race clearDraft
+    // below and resurrect a draft after a successful save (CR-01/CR-02).
+    await flushDraftWrite()
     await saveFn()
     // On success: clear drafts.
     // - oldNoteId: the `:new` key (for a new note, id was '' before saveFn).
@@ -278,11 +294,12 @@ async function onSave(): Promise<void> {
     clearDraft(null)
     clearDraft(record.value.id || null)
     isDirty.value = false
-    // Keep the dialog open — save-in-place UX (the editor stays active after save).
+    notify?.({ ...record.value })
   } catch (e: unknown) {
-    toast.error('Failed to save note.')
+    // The dialog has already closed — surface the failure and leave the draft so
+    // the edit can be recovered on the next open. No rethrow (nothing to keep open).
+    toast.error('Failed to save note. Your changes are kept locally.')
     console.error('ManageNote: save failed', e)
-    // Keep isDirty = true and the draft intact so the user can retry or close.
   } finally {
     isSaving.value = false
   }
@@ -315,21 +332,14 @@ onBeforeUnmount(() => {
 
 <template>
   <BaseMobileDialog
-    ref="dialogRef"
     v-model:visible="visible"
     :title="isNew ? 'New Note' : 'Edit Note'"
     :is-dirty="isDirty"
     :is-saving="isSaving"
+    fill-height
+    :before-close="handleBeforeClose"
     @discard="onDiscard"
   >
-    <!-- Dirty indicator (replaces the old auto-save status span) -->
-    <span
-      class="text-xs block mb-2"
-      style="color: var(--color-typo-muted)"
-      aria-live="polite"
-      aria-atomic="true"
-    >{{ isDirty ? 'Unsaved changes' : '' }}</span>
-
     <!-- Title input -->
     <InputText
       v-model="record.title"
@@ -346,15 +356,5 @@ onBeforeUnmount(() => {
       v-model="editorContent"
       @update:model-value="isDirty = true; scheduleDraftWrite()"
     />
-
-    <template #actions>
-      <Button
-        label="Save"
-        icon="pi pi-check"
-        :disabled="!isDirty || isSaving"
-        :loading="isSaving"
-        @click="onSave"
-      />
-    </template>
   </BaseMobileDialog>
 </template>

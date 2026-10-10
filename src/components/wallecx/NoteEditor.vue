@@ -223,6 +223,7 @@ function promptLink() {
 
   <!-- Editor wrapper with iOS keyboard handling -->
   <div
+    class="note-editor-body"
     aria-label="Note body"
     role="textbox"
     aria-multiline="true"

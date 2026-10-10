@@ -204,6 +204,47 @@
   background: var(--color-surface-card);
 }
 
+/* ManageNote: full-height layout for the note Drawer. The `.wallecx-drawer-content--fill`
+ * hook class is applied ONLY when BaseMobileDialog receives `fill-height` (currently
+ * just ManageNote), so every other manage dialog is unaffected.
+ *
+ * `.wallecx-form` (the drawer content's child) grows to fill and lays out as a
+ * column so a consumer can grow an inner region (the editor) to the bottom. The
+ * note has no #actions bar (it saves on close), so nothing is pinned here. */
+.wallecx-drawer-content--fill {
+  display: flex;
+  flex-direction: column;
+}
+.wallecx-drawer-content--fill .wallecx-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ManageNote: let the TipTap editor grow to fill the space between the title
+ * and the bottom of the note Drawer, so short notes don't leave a dead gap.
+ *
+ * Uses the same grow-without-clip flex pattern as the WallecxApp card: flex:1
+ * (basis 0) with the default min-height:auto means the body fills the leftover
+ * space for short notes, yet still expands past the drawer for long notes (the
+ * drawer keeps scrolling) rather than clipping the text. `> div` is the
+ * unclassed EditorContent wrapper; `.ProseMirror` is the editable surface that
+ * carries the existing min-height: 200px floor. Scoped to the fill drawer so
+ * every other manage dialog and the desktop Dialog are unchanged. */
+.wallecx-drawer-content--fill .note-editor-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.wallecx-drawer-content--fill .note-editor-body > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.wallecx-drawer-content--fill .note-editor-body .ProseMirror {
+  flex: 1;
+}
+
 /* Manage dialog surfaces (Drawer on mobile, Dialog on desktop).
  *
  * PrimeVue teleports both to <body>, so the scoped :deep overrides that used to
