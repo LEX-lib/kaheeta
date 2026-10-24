@@ -105,7 +105,7 @@ onMounted(async () => {
 
 <template>
   <Card
-      class="wallecx-root overscroll-none"
+      class="wallecx-root overscroll-none flex-1"
       :style="{
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',

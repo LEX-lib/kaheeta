@@ -8,6 +8,20 @@ const props = defineProps<{
   title: string
   isDirty: boolean
   isSaving: boolean
+  /**
+   * Opt-in: let the form content fill the mobile Drawer height (flex column) so
+   * consumers can grow an inner region (e.g. the note editor) to the bottom.
+   * Off by default so other manage dialogs keep their current layout.
+   */
+  fillHeight?: boolean
+  /**
+   * Opt-in async hook run before the dialog closes (X, Esc, or desktop backdrop).
+   * When provided, a close request awaits it first; if it throws, the dialog stays
+   * open (the consumer is expected to surface the error). The dirty-state confirm
+   * is bypassed on this path. Used by ManageNote for close-to-save. When omitted,
+   * close behavior is exactly as before.
+   */
+  beforeClose?: () => Promise<void> | void
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +50,46 @@ function closeWithoutGuard(): void {
 }
 
 defineExpose({ closeWithoutGuard })
+
+// Guards against a second close request while an async beforeClose is running.
+let _closing = false
+
+/**
+ * Intercepts every close request from PrimeVue's Drawer/Dialog (rebind as
+ * `:visible` + `@update:visible` so this runs before the panel hides).
+ *
+ * - No `beforeClose` prop → close immediately (identical to the old v-model).
+ * - With `beforeClose` → await it, then close; on throw, keep the dialog open so
+ *   the consumer can show an error and the user can retry. `_bypassGuard` skips
+ *   the dirty-state confirm for this programmatic close.
+ */
+async function requestClose(): Promise<void> {
+  if (_closing) return
+  if (!props.beforeClose) {
+    visible.value = false
+    return
+  }
+  _closing = true
+  try {
+    await props.beforeClose()
+  } catch {
+    // Consumer surfaced the failure (e.g. toast) — keep the dialog open.
+    _closing = false
+    return
+  }
+  _bypassGuard = true
+  visible.value = false
+  _closing = false
+}
+
+/** `@update:visible` handler for the Drawer/Dialog. */
+function onVisibleUpdate(next: boolean): void {
+  if (next) {
+    visible.value = true
+    return
+  }
+  void requestClose()
+}
 
 /**
  * Fires BEFORE the Drawer closes (backdrop tap, swipe-down, Esc key) when
@@ -95,10 +149,12 @@ const formRef = ref<HTMLElement | null>(null)
   <!-- Mobile: bottom Drawer (85dvh cap already applied by Phase 34 wallecx-overrides.css) -->
   <Drawer
     v-if="isMobile"
-    v-model:visible="visible"
+    :visible="visible"
     position="bottom"
     :dismissable="false"
     :show-close-icon="!isSaving"
+    :pt="fillHeight ? { content: { class: 'wallecx-drawer-content--fill' } } : undefined"
+    @update:visible="onVisibleUpdate"
     @before-hide="onBeforeHide"
     @hide="onHide"
   >
@@ -110,11 +166,13 @@ const formRef = ref<HTMLElement | null>(null)
     </template>
 
     <!-- Form container: focusin listener drives FD-06 auto-scroll on mobile -->
-    <div ref="formRef" @focusin="onFocusin">
+    <div ref="formRef" class="wallecx-form" @focusin="onFocusin">
       <slot />
       <!-- Sticky action bar: #actions slot routed inside scrollable content (mobile).
-           .wallecx-manage-actions CSS rule (Phase 35 LT-08) pins it to the bottom. -->
-      <div class="wallecx-manage-actions">
+           .wallecx-manage-actions CSS rule (Phase 35 LT-08) pins it to the bottom.
+           Rendered only when the consumer supplies actions (ManageNote has none —
+           it saves on close instead). -->
+      <div v-if="$slots.actions" class="wallecx-manage-actions">
         <slot name="actions" />
       </div>
     </div>
@@ -124,16 +182,17 @@ const formRef = ref<HTMLElement | null>(null)
   <Dialog
     v-else
     modal
-    v-model:visible="visible"
+    :visible="visible"
     :header="title"
     :style="{ width: '40vw' }"
     :breakpoints="{ '960px': '75vw', '641px': '92vw' }"
     :closable="!isSaving"
+    @update:visible="onVisibleUpdate"
     @hide="onHide"
   >
     <slot />
     <!-- Desktop: #actions slot routed to Dialog #footer (always visible, outside scroll) -->
-    <template #footer>
+    <template v-if="$slots.actions" #footer>
       <slot name="actions" />
     </template>
   </Dialog>

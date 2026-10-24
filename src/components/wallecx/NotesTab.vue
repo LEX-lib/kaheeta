@@ -217,7 +217,7 @@ async function handleNoteSaved(updatedNote: Note): Promise<void> {
       v-if="showManage"
       v-model:visible="showManage"
       :note="manageRecord"
-      @note-saved="handleNoteSaved"
+      :save-handler="handleNoteSaved"
     />
   </div>
 </template>
