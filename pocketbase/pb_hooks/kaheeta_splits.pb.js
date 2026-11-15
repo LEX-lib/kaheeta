@@ -85,7 +85,11 @@ routerAdd(
         throw new BadRequestError("Invalid expense payload.");
       }
     }
-    const receiptFiles = e.findUploadedFiles("receipt");
+    // findUploadedFiles throws on non-multipart requests, so only call it when
+    // the body is actually multipart (plain JSON writes carry no file).
+    const receiptFiles = (e.request.header.get("Content-Type") || "").indexOf("multipart/form-data") !== -1
+      ? e.findUploadedFiles("receipt")
+      : [];
 
     const groupId = (body.group || "").trim();
     if (!groupId) {
@@ -278,7 +282,11 @@ routerAdd(
         throw new BadRequestError("Invalid expense payload.");
       }
     }
-    const receiptFiles = e.findUploadedFiles("receipt");
+    // findUploadedFiles throws on non-multipart requests, so only call it when
+    // the body is actually multipart (plain JSON writes carry no file).
+    const receiptFiles = (e.request.header.get("Content-Type") || "").indexOf("multipart/form-data") !== -1
+      ? e.findUploadedFiles("receipt")
+      : [];
     const removeReceipt = body.remove_receipt === true || body.remove_receipt === "true";
 
     let expense;
