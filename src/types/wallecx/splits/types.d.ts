@@ -63,10 +63,15 @@ export interface SplitExpense extends RecordModel {
   expense_date: string; // ISO date string
   deleted_at?: string; // ISO date string; empty when active (soft delete)
   notes?: string;
+  payment_mode?: PaymentMode;
+  receipt?: string; // filename (MaxSelect=1 file field)
   expand?: {
     paid_by?: MemberUser;
   };
 }
+
+/** Optional expense metadata, shared with wallecx_expenses' fixed set. */
+export type PaymentMode = "cash" | "credit" | "debit" | "ewallet";
 
 /**
  * One participant's owed portion of an expense (collection:
@@ -91,6 +96,7 @@ export interface CreateSplitExpensePayload {
   expense_date: string; // ISO date string
   paid_by: string; // users record id of the payer
   notes?: string;
+  payment_mode?: PaymentMode;
   shares: Array<{ user: string; amount: number }>;
 }
 

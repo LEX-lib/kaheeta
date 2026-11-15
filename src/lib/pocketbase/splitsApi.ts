@@ -42,6 +42,32 @@ export function addMemberByEmail(groupId: string, email: string): Promise<void> 
   });
 }
 
+/** Add a member by users record id (used by the "frequent members" shortcuts). */
+export function addMemberAsUser(groupId: string, userId: string): Promise<void> {
+  return pb.send(`/api/kaheeta/groups/${groupId}/members`, {
+    method: "POST",
+    body: { user: userId },
+  });
+}
+
+/** A people shortcut resolved server-side from the caller's owned groups. */
+export interface SuggestedMember {
+  user: string; // users record id
+  name: string;
+  email: string;
+  avatar: string;
+  shared_groups: number; // how many of the caller's groups this person is in
+}
+
+/**
+ * People the caller has shared groups with, most frequent first, excluding the
+ * caller and anyone already in `groupId`. Owner-only; names are resolved
+ * server-side because the users view rule is self-only.
+ */
+export function getSuggestedMembers(groupId: string): Promise<{ contacts: SuggestedMember[] }> {
+  return pb.send(`/api/kaheeta/groups/${groupId}/suggested-members`, { method: "GET" });
+}
+
 /** A group member with their resolved display fields (from the superuser route). */
 export interface GroupMemberInfo {
   id: string; // membership record id
@@ -88,13 +114,18 @@ export function deleteGroup(groupId: string): Promise<void> {
  * must sum to `payload.amount` (integer minor units) — the hook re-validates
  * this server-side and rejects a mismatch. The caller and the payer must both
  * be members of the group.
+ *
+ * When a receipt file is supplied the request is sent as multipart (the JSON
+ * payload plus the file); otherwise the plain JSON body is used, so the hook
+ * keeps accepting both shapes.
  */
 export function createSplitExpense(
   payload: CreateSplitExpensePayload,
+  opts: SplitExpenseFileOptions = {},
 ): Promise<CreateSplitExpenseResult> {
   return pb.send<CreateSplitExpenseResult>("/api/kaheeta/split-expenses", {
     method: "POST",
-    body: payload,
+    body: buildExpenseBody(payload, opts),
   });
 }
 
@@ -106,11 +137,36 @@ export function createSplitExpense(
 export function updateSplitExpense(
   expenseId: string,
   payload: CreateSplitExpensePayload,
+  opts: SplitExpenseFileOptions = {},
 ): Promise<CreateSplitExpenseResult> {
   return pb.send<CreateSplitExpenseResult>(`/api/kaheeta/split-expenses/${expenseId}`, {
     method: "PATCH",
-    body: payload,
+    body: buildExpenseBody(payload, opts),
   });
+}
+
+/** Optional receipt handling for split-expense writes. */
+export interface SplitExpenseFileOptions {
+  /** A new receipt to upload (replaces any existing one). */
+  receipt?: File | null;
+  /** Clear the stored receipt (ignored when `receipt` is also set). */
+  removeReceipt?: boolean;
+}
+
+function buildExpenseBody(
+  payload: CreateSplitExpensePayload,
+  opts: SplitExpenseFileOptions,
+): (CreateSplitExpensePayload & { remove_receipt?: boolean }) | FormData {
+  if (opts.receipt) {
+    const formData = new FormData();
+    formData.append("payload", JSON.stringify(payload));
+    formData.append("receipt", opts.receipt);
+    return formData;
+  }
+  if (opts.removeReceipt) {
+    return { ...payload, remove_receipt: true };
+  }
+  return payload;
 }
 
 /**

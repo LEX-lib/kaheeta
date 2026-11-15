@@ -1,20 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
 import { useToast } from '@/composables/useToast'
+import { useIsMobile } from '@/composables/useIsMobile'
 import { useConfirm } from 'primevue/useconfirm' // explicit — NOT auto-resolved by PrimeVueResolver
 import { computeBalances } from '@/lib/wallecx/balances'
 import { simplifyDebts } from '@/lib/wallecx/simplifyDebts'
 import { formatCents } from '@/lib/wallecx/splitFormat'
+import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
 import {
   leaveGroup,
   deleteGroup,
   addMemberByEmail,
+  addMemberAsUser,
+  getGroupMembers,
+  getSuggestedMembers,
   deleteSplitExpense,
   setGroupSimplify,
-  getGroupMembers,
 } from '@/lib/pocketbase/splitsApi'
 import type {
   Group,
@@ -23,8 +27,11 @@ import type {
   SplitShare,
   BalanceSummary,
 } from '@/types/wallecx/splits/types'
+import type { SuggestedMember } from '@/lib/pocketbase/splitsApi'
 import ManageSplitExpense from './ManageSplitExpense.vue'
 import SettleUpDialog from './SettleUpDialog.vue'
+import AttachmentPreview from './AttachmentPreview.vue'
+import DragHandle from './DragHandle.vue'
 
 const props = defineProps<{
   group: Group
@@ -48,15 +55,29 @@ const ledgerLoading = ref(false)
 
 const inviteEmail = ref('')
 const isAddingMember = ref(false)
+const suggested = ref<SuggestedMember[]>([])
+const suggestionsLoading = ref(false)
+const addingUserId = ref('')
 const showManage = ref(false)
 const editingExpense = ref<SplitExpense | null>(null)
+const manageToken = ref('')
 const showSettle = ref(false)
 const settleBalance = ref<BalanceSummary | null>(null)
 const simplifyOn = ref(props.group.simplify_debts)
 const isSavingSimplify = ref(false)
 const isExporting = ref(false)
 
+// Receipt preview mirrors the Expenses tab: token required for protected files.
+const isMobile = useIsMobile()
+const showPreview = ref(false)
+const previewRecord = ref<SplitExpense | null>(null)
+const previewToken = ref('')
+
 const isOwner = computed(() => props.group.created_by === props.currentUserId)
+
+function paymentModeLabel(value: string): string {
+  return PAYMENT_MODES.find((m) => m.value === value)?.label ?? value
+}
 
 function memberLabel(m: GroupMember): string {
   return m.expand?.user?.name || m.expand?.user?.email || 'Member'
@@ -109,6 +130,9 @@ function exportJson(): void {
         currency: ex.currency,
         split_type: ex.split_type,
         expense_date: ex.expense_date,
+        notes: ex.notes ?? '',
+        payment_mode: ex.payment_mode ?? '',
+        receipt: ex.receipt ?? '',
         paid_by: nameForUser(ex.paid_by),
         shares: shares.value
           .filter((s) => s.expense === ex.id)
@@ -184,6 +208,25 @@ async function loadMembers(): Promise<void> {
   }
 }
 
+// People the owner has already shared groups with — one tap to add. Non-critical:
+// a failure just leaves the email form as the only way in.
+async function loadSuggestions(): Promise<void> {
+  if (!isOwner.value) {
+    suggested.value = []
+    return
+  }
+  suggestionsLoading.value = true
+  try {
+    const { contacts } = await getSuggestedMembers(props.group.id)
+    suggested.value = contacts
+  } catch (e: unknown) {
+    suggested.value = []
+    console.error('GroupDetail: loadSuggestions failed', e)
+  } finally {
+    suggestionsLoading.value = false
+  }
+}
+
 async function loadLedger(): Promise<void> {
   ledgerLoading.value = true
   try {
@@ -211,11 +254,12 @@ async function loadLedger(): Promise<void> {
 }
 
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadLedger()])
+  await Promise.all([loadMembers(), loadLedger(), loadSuggestions()])
 })
 
 function openAddExpense(): void {
   editingExpense.value = null
+  manageToken.value = ''
   showManage.value = true
 }
 
@@ -226,9 +270,33 @@ function canEditExpense(ex: SplitExpense): boolean {
   return ex.added_by === props.currentUserId || isOwner.value
 }
 
-function openEditExpense(ex: SplitExpense): void {
+async function openEditExpense(ex: SplitExpense): Promise<void> {
+  // Edit mode with an existing receipt needs a file token to render the thumbnail.
+  try {
+    manageToken.value = await pb.files.getToken()
+  } catch (e: unknown) {
+    manageToken.value = ''
+    toast.error('Receipt preview unavailable. Form will still save.')
+    console.error('GroupDetail: getToken (manage) failed', e)
+  }
   editingExpense.value = ex
   showManage.value = true
+}
+
+watch(showManage, (v) => {
+  if (!v) manageToken.value = ''
+})
+
+async function openReceiptPreview(ex: SplitExpense): Promise<void> {
+  try {
+    previewToken.value = await pb.files.getToken()
+  } catch (e: unknown) {
+    toast.error('Failed to load receipt. Refresh to try again.')
+    console.error('GroupDetail: getToken (preview) failed', e)
+    return
+  }
+  previewRecord.value = ex
+  showPreview.value = true
 }
 
 async function onExpenseSaved(): Promise<void> {
@@ -288,13 +356,28 @@ async function submitAddMember(): Promise<void> {
   try {
     await addMemberByEmail(props.group.id, email)
     inviteEmail.value = ''
-    await loadMembers()
+    await Promise.all([loadMembers(), loadSuggestions()])
     toast.success('Member added.')
   } catch (e: unknown) {
     toast.error('Could not add member — they may not have a Kaheeta account.')
     console.error('GroupDetail: addMemberByEmail failed', e)
   } finally {
     isAddingMember.value = false
+  }
+}
+
+async function addSuggested(contact: SuggestedMember): Promise<void> {
+  if (addingUserId.value) return
+  addingUserId.value = contact.user
+  try {
+    await addMemberAsUser(props.group.id, contact.user)
+    toast.success(`${contact.name || contact.email || 'Member'} added.`)
+    await Promise.all([loadMembers(), loadSuggestions()])
+  } catch (e: unknown) {
+    toast.error('Could not add member. Please try again.')
+    console.error('GroupDetail: addMemberAsUser failed', e)
+  } finally {
+    addingUserId.value = ''
   }
 }
 
@@ -433,11 +516,31 @@ async function doDelete(): Promise<void> {
             </p>
             <p class="text-xs opacity-70">
               {{ ex.expense_date?.slice(0, 10) }} · paid by {{ nameForUser(ex.paid_by) }}
+              <span
+                v-if="ex.payment_mode"
+                class="inline-block ml-1 px-2 py-0.5 rounded-full align-baseline"
+                style="background: var(--color-surface-card-2); color: var(--color-typo-body)"
+              >
+                {{ paymentModeLabel(ex.payment_mode) }}
+              </span>
+            </p>
+            <p v-if="ex.notes" class="text-xs opacity-60 truncate">
+              {{ ex.notes }}
             </p>
           </div>
           <span class="text-sm font-medium tabular-nums whitespace-nowrap">
             {{ formatCents(ex.amount, ex.currency) }}
           </span>
+          <Button
+            v-if="ex.receipt"
+            icon="pi pi-paperclip"
+            size="small"
+            severity="secondary"
+            text
+            rounded
+            aria-label="View receipt"
+            @click.stop="openReceiptPreview(ex)"
+          />
           <Button
             v-if="canEditExpense(ex)"
             icon="pi pi-pencil"
@@ -484,6 +587,27 @@ async function doDelete(): Promise<void> {
       </ul>
     </div>
 
+    <!-- Frequent members (owner only) — one tap instead of typing an email -->
+    <div v-if="isOwner && (suggestionsLoading || suggested.length > 0)">
+      <p class="text-sm font-medium mb-2">Frequent</p>
+      <div v-if="suggestionsLoading" class="text-sm opacity-70">Loading…</div>
+      <div v-else class="flex flex-wrap gap-2">
+        <Button
+          v-for="c in suggested"
+          :key="c.user"
+          :label="c.name || c.email"
+          icon="pi pi-user-plus"
+          size="small"
+          severity="secondary"
+          outlined
+          rounded
+          :loading="addingUserId === c.user"
+          :disabled="!!addingUserId && addingUserId !== c.user"
+          @click="addSuggested(c)"
+        />
+      </div>
+    </div>
+
     <!-- Add member by email (owner only) -->
     <div v-if="isOwner" class="flex items-end gap-2">
       <div class="flex flex-col gap-1 flex-1">
@@ -528,8 +652,49 @@ async function doDelete(): Promise<void> {
       :members="members"
       :expense="editingExpense"
       :expense-shares="sharesForEditing"
+      :token="manageToken"
       @saved="onExpenseSaved"
     />
+
+    <!-- Receipt preview: Dialog on desktop, bottom Drawer on mobile -->
+    <Dialog
+      v-if="!isMobile"
+      v-model:visible="showPreview"
+      modal
+      header="Receipt"
+      :style="{ width: '40rem' }"
+      :breakpoints="{ '960px': '75vw', '641px': '92vw' }"
+      @hide="previewRecord = null; previewToken = ''"
+    >
+      <AttachmentPreview
+        v-if="previewRecord"
+        :record="previewRecord"
+        attachment-field="receipt"
+        attachment-name="Receipt"
+        :token="previewToken"
+      />
+    </Dialog>
+
+    <Drawer
+      v-else
+      v-model:visible="showPreview"
+      position="bottom"
+      @hide="previewRecord = null; previewToken = ''"
+    >
+      <template #header>
+        <div class="flex flex-col items-center w-full gap-1">
+          <DragHandle />
+          <span class="font-semibold">Receipt</span>
+        </div>
+      </template>
+      <AttachmentPreview
+        v-if="previewRecord"
+        :record="previewRecord"
+        attachment-field="receipt"
+        attachment-name="Receipt"
+        :token="previewToken"
+      />
+    </Drawer>
 
     <!-- Settle up dialog -->
     <SettleUpDialog

@@ -26,6 +26,8 @@ Legend: ☐ to do · ✅ pass · ❌ fail (note the ID + actual result)
 | P-3 | Index `kaheeta_split_expenses (group, deleted_at)` and `kaheeta_split_shares (expense, user)` present (perf, not correctness). |
 | P-4 | **Three** test accounts that can log in to the app: **A**, **B**, **C** (A & B alone suffice for the 2-way cases; C is needed for the 3-way exit gate). Use two browsers / a normal + incognito window / two devices so the two sessions are truly independent. |
 | P-5 | App running against that backend: `npm run dev` (points at `VITE_API_BASE_URL`) or a deployed build. |
+| P-6 | `kaheeta_split_expenses` has the optional metadata fields: **`payment_mode`** (Select, optional) and **`receipt`** (File, max 1, 10 MB, JPEG/PNG/WebP/PDF, **protected**). `notes` already exists. |
+| P-7 | The hook is redeployed with `GET /api/kaheeta/groups/{id}/suggested-members` and member-by-user-id support. Quick check: an unauthenticated request returns **401**, not 404. |
 
 Frontend entry: log in → **My Wallet** → **Groups** tab (`mdi:account-group`).
 
@@ -222,6 +224,19 @@ You 50, You owe Carol 50 (you net zero).
 | SPL-N-1 | Open a group on **desktop** | A "Download records" button shows next to Add expense | ☐ |
 | SPL-N-2 | Click it | Downloads `kaheeta-<group>-<date>.json` with group meta, members, balances, and expenses+shares | ☐ |
 | SPL-N-3 | Open a group on **mobile** | **No** Download records button (hidden, mirroring Expenses) | ☐ |
+
+---
+
+## O. Expense metadata & frequent members
+
+| ID | Step | Expected | Result |
+|----|------|----------|--------|
+| SPL-O-1 | Add an expense with a **payment mode** and **notes** | Feed shows the payment-mode chip and the notes line; `GET` of the row returns both; the group JSON export includes `payment_mode` + `notes` | ☐ |
+| SPL-O-2 | Attach a **receipt** (photo + PDF) and save, then reopen the expense | Paperclip appears in the feed; another **group member** opens the preview successfully; a non-member gets no file access | ☐ |
+| SPL-O-3 | Edit the expense: replace the receipt; then use **Remove current receipt** and save | New file replaces the old; removal clears the field and the paperclip disappears | ☐ |
+| SPL-O-4 | As the owner, open a group you own after previously adding people to another group | A **Frequent** chip row lists those people (most shared groups first) and omits current members + yourself | ☐ |
+| SPL-O-5 | Tap a Frequent chip | Member is added immediately (no email typed) and disappears from the suggestions | ☐ |
+| SPL-O-6 | Non-owner requests `GET /api/kaheeta/groups/{id}/suggested-members` | **403** — only the owner can add/look up suggestions | ☐ |
 
 ---
 

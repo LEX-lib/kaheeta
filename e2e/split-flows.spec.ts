@@ -163,6 +163,50 @@ test.describe("Split flows", () => {
     await expect(page.getByText("Member", { exact: true })).toHaveCount(0);
   });
 
+  test("notes and payment mode round-trip into the feed", async ({ page }) => {
+    const { posted } = await mockSplitsApi(page);
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+    await page.getByRole("button", { name: "Add expense" }).click();
+
+    const form = page.locator("#manage-split-expense-form");
+    await expect(form).toBeVisible();
+    await page.getByPlaceholder("e.g. Dinner").fill("Team lunch");
+    await form.getByRole("spinbutton").fill("60");
+
+    await page.getByText("Select a payment mode").click();
+    await page.getByRole("option", { name: "Cash" }).click();
+    await page.locator("textarea").fill("Split with Bob and Carol");
+
+    await page.locator('button[form="manage-split-expense-form"]').click();
+    await expect(page.locator("#manage-split-expense-form")).toBeHidden();
+
+    // The optimistic re-read reflects the stored metadata.
+    await expect(page.getByText("Team lunch", { exact: true })).toBeVisible();
+    await expect(page.getByText("Cash", { exact: true })).toBeVisible();
+    await expect(page.getByText("Split with Bob and Carol")).toBeVisible();
+    expect(posted).toHaveLength(1);
+    expect(posted[0]!.payment_mode).toBe("cash");
+    expect(posted[0]!.notes).toBe("Split with Bob and Carol");
+  });
+
+  test("frequent-member chip adds a member without an email (SPL-U-5)", async ({ page }) => {
+    await mockSplitsApi(page);
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    await expect(page.getByText("Frequent", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Dave" }).click();
+
+    // Dave joins the member list; the suggestion chip disappears.
+    await expect(page.getByText("Dave", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Dave" })).toHaveCount(0);
+  });
+
   test("owner deleting a group closes detail and clears the list (SPL-U-4)", async ({ page }) => {
     await mockSplitsApi(page); // e2e_user owns "Trip"; empty ledger
 
