@@ -63,6 +63,12 @@ export async function mockSplitsApi(
   ];
   const members: Rec[] = memberInfos.map((m) => member(m.id, m.user, m.name));
 
+  // People the owner has previously shared groups with (suggested-members pool).
+  const frequentPool = [
+    { user: "u_dave", name: "Dave" },
+    { user: "u_erin", name: "Erin" },
+  ];
+
   const expenses: Rec[] = (seed.expenses ?? []).map((e) => ({
     collectionId: "kaheeta_split_expenses",
     collectionName: "kaheeta_split_expenses",
@@ -116,6 +122,9 @@ export async function mockSplitsApi(
       currency: body.currency,
       split_type: body.split_type,
       expense_date: body.expense_date,
+      notes: body.notes ?? "",
+      payment_mode: body.payment_mode ?? "",
+      receipt: body.receipt ?? "",
       deleted_at: "",
       created: "2026-06-30 00:00:00.000Z",
       updated: "2026-06-30 00:00:00.000Z",
@@ -152,6 +161,9 @@ export async function mockSplitsApi(
         ex.split_type = body.split_type;
         ex.expense_date = body.expense_date;
         ex.paid_by = body.paid_by;
+        ex.notes = body.notes ?? "";
+        ex.payment_mode = body.payment_mode ?? "";
+        if (body.remove_receipt) ex.receipt = "";
         // Replace shares for this expense.
         for (let i = shares.length - 1; i >= 0; i--) {
           if (shares[i]!.expense === id) shares.splice(i, 1);
@@ -172,9 +184,41 @@ export async function mockSplitsApi(
     return route.fallback();
   });
 
-  // --- Group members hook (GET resolves names server-side) ---
-  await page.route(/\/api\/kaheeta\/groups\/[^/?]+\/members(\?|$)/, (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
+  // --- Suggested members (owner's frequent contacts) ---
+  await page.route(/\/api\/kaheeta\/groups\/[^/?]+\/suggested-members(\?|$)/, (route) => {
+    const current = new Set(memberInfos.map((m) => m.user));
+    const contacts = frequentPool
+      .filter((c) => !current.has(c.user))
+      .map((c) => ({
+        user: c.user,
+        name: c.name,
+        email: `${c.user}@example.com`,
+        avatar: "",
+        shared_groups: 2,
+      }));
+    return json(route, 200, { contacts });
+  });
+
+  // --- Group members hook: GET resolves names; POST adds by email or user id ---
+  await page.route(/\/api\/kaheeta\/groups\/[^/?]+\/members(\?|$)/, async (route) => {
+    const method = route.request().method();
+    if (method === "POST") {
+      const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
+      const userId = typeof body.user === "string" ? body.user : "";
+      const email = typeof body.email === "string" ? body.email.toLowerCase() : "";
+      const already = memberInfos.some(
+        (m) => (userId && m.user === userId) || (email && `${m.user}@example.com` === email),
+      );
+      if (!already) {
+        const user = userId || (email ? (email.split("@")[0] ?? email) : genId("u_"));
+        const known = frequentPool.find((c) => c.user === user);
+        const info = { id: genId("m_"), user, name: known?.name ?? user.replace(/^u_/, "") };
+        memberInfos.push(info);
+        members.push(member(info.id, info.user, info.name));
+      }
+      return json(route, 200, { ok: true });
+    }
+    if (method !== "GET") return route.fallback();
     const body = memberInfos.map((m) => ({
       id: m.id,
       user: m.user,

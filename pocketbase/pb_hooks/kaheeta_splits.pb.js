@@ -74,7 +74,18 @@ routerAdd(
   "/api/kaheeta/split-expenses",
   (e) => {
     const user = e.auth;
-    const body = e.requestInfo().body;
+    const info = e.requestInfo();
+    // Accept the plain JSON body (no file) or multipart with a `payload` JSON
+    // string + `receipt` file, so adding a receipt stays a single request.
+    let body = info.body || {};
+    if (typeof body.payload === "string" && body.payload) {
+      try {
+        body = JSON.parse(body.payload);
+      } catch (_) {
+        throw new BadRequestError("Invalid expense payload.");
+      }
+    }
+    const receiptFiles = e.findUploadedFiles("receipt");
 
     const groupId = (body.group || "").trim();
     if (!groupId) {
@@ -96,6 +107,13 @@ routerAdd(
       throw new BadRequestError("A payer is required.");
     }
     const notes = (body.notes || "").trim();
+    if (notes.length > 2000) {
+      throw new BadRequestError("Notes must be 2000 characters or fewer.");
+    }
+    const paymentMode = (body.payment_mode || "").trim();
+    if (paymentMode && ["cash", "credit", "debit", "ewallet"].indexOf(paymentMode) === -1) {
+      throw new BadRequestError("Invalid payment mode.");
+    }
 
     const shares = Array.isArray(body.shares) ? body.shares : [];
     if (shares.length === 0) {
@@ -164,6 +182,12 @@ routerAdd(
         expense.set("split_type", splitType);
         expense.set("expense_date", expenseDate);
         expense.set("notes", notes);
+        if (paymentMode) {
+          expense.set("payment_mode", paymentMode);
+        }
+        if (receiptFiles.length > 0) {
+          expense.set("receipt", receiptFiles[0]);
+        }
         txApp.save(expense);
 
         for (let i = 0; i < shares.length; i++) {
@@ -245,7 +269,17 @@ routerAdd(
   (e) => {
     const user = e.auth;
     const expenseId = e.request.pathValue("id");
-    const body = e.requestInfo().body;
+    const info = e.requestInfo();
+    let body = info.body || {};
+    if (typeof body.payload === "string" && body.payload) {
+      try {
+        body = JSON.parse(body.payload);
+      } catch (_) {
+        throw new BadRequestError("Invalid expense payload.");
+      }
+    }
+    const receiptFiles = e.findUploadedFiles("receipt");
+    const removeReceipt = body.remove_receipt === true || body.remove_receipt === "true";
 
     let expense;
     try {
@@ -287,6 +321,13 @@ routerAdd(
       throw new BadRequestError("A payer is required.");
     }
     const notes = (body.notes || "").trim();
+    if (notes.length > 2000) {
+      throw new BadRequestError("Notes must be 2000 characters or fewer.");
+    }
+    const paymentMode = (body.payment_mode || "").trim();
+    if (paymentMode && ["cash", "credit", "debit", "ewallet"].indexOf(paymentMode) === -1) {
+      throw new BadRequestError("Invalid payment mode.");
+    }
 
     const shares = Array.isArray(body.shares) ? body.shares : [];
     if (shares.length === 0) {
@@ -341,6 +382,15 @@ routerAdd(
         expense.set("split_type", splitType);
         expense.set("expense_date", expenseDate);
         expense.set("notes", notes);
+        expense.set("payment_mode", paymentMode);
+        if (receiptFiles.length > 0) {
+          expense.set("receipt", receiptFiles[0]);
+        } else if (removeReceipt) {
+          const currentReceipt = expense.getString("receipt");
+          if (currentReceipt) {
+            expense.set("receipt-", [currentReceipt]);
+          }
+        }
         txApp.save(expense);
 
         // Replace shares: delete the existing rows, then insert the new set.
@@ -461,7 +511,97 @@ routerAdd(
   $apis.requireAuth(),
 );
 
-// POST /api/kaheeta/groups/{id}/members — owner adds a member by email.
+// GET /api/kaheeta/groups/{id}/suggested-members — people the caller has already
+// shared groups with, most frequent first, excluding the caller and anyone
+// already in this group. Owner-only (only the owner can add members). Scoped to
+// groups the caller owns so it never exposes the wider user directory.
+routerAdd(
+  "GET",
+  "/api/kaheeta/groups/{id}/suggested-members",
+  (e) => {
+    const user = e.auth;
+    const groupId = e.request.pathValue("id");
+
+    let group;
+    try {
+      group = $app.findRecordById("kaheeta_groups", groupId);
+    } catch (_) {
+      throw new NotFoundError("Group not found.");
+    }
+    if (group.get("created_by") !== user.id) {
+      throw new ForbiddenError("Only the group owner can add members.");
+    }
+
+    // Skip the caller and everyone already in this group.
+    const excluded = {};
+    excluded[user.id] = true;
+    const current = $app.findRecordsByFilter(
+      "kaheeta_group_members",
+      "group = {:g}",
+      "", 0, 0,
+      { g: groupId },
+    );
+    for (let i = 0; i < current.length; i++) {
+      excluded[current[i].get("user")] = true;
+    }
+
+    // Membership rows across every group the caller owns.
+    const rows = $app.findRecordsByFilter(
+      "kaheeta_group_members",
+      "group.created_by = {:u}",
+      "", 0, 0,
+      { u: user.id },
+    );
+
+    const counts = {};
+    const order = [];
+    for (let i = 0; i < rows.length; i++) {
+      const uid = rows[i].get("user");
+      if (!uid || excluded[uid]) {
+        continue;
+      }
+      if (counts[uid] === undefined) {
+        counts[uid] = 0;
+        order.push(uid);
+      }
+      counts[uid] += 1;
+    }
+
+    const contacts = [];
+    for (let i = 0; i < order.length; i++) {
+      const uid = order[i];
+      let name = "";
+      let email = "";
+      let avatar = "";
+      try {
+        const u = $app.findRecordById("users", uid);
+        name = u.get("name") || "";
+        email = u.get("email") || "";
+        avatar = u.get("avatar") || "";
+      } catch (_) {
+        // user missing — keep the row out of the suggestions
+        continue;
+      }
+      contacts.push({
+        user: uid,
+        name: name,
+        email: email,
+        avatar: avatar,
+        shared_groups: counts[uid],
+      });
+    }
+
+    contacts.sort((a, b) => {
+      if (b.shared_groups !== a.shared_groups) return b.shared_groups - a.shared_groups;
+      return (a.name || a.email).localeCompare(b.name || b.email);
+    });
+
+    return e.json(200, { contacts: contacts.slice(0, 8) });
+  },
+  $apis.requireAuth(),
+);
+
+// POST /api/kaheeta/groups/{id}/members — owner adds a member by email or user id.
 routerAdd(
   "POST",
   "/api/kaheeta/groups/{id}/members",
@@ -470,8 +610,9 @@ routerAdd(
     const groupId = e.request.pathValue("id");
     const body = e.requestInfo().body;
     const email = (body.email || "").trim().toLowerCase();
-    if (!email) {
-      throw new BadRequestError("An email is required.");
+    const targetUserId = (body.user || "").trim();
+    if (!email && !targetUserId) {
+      throw new BadRequestError("An email or user id is required.");
     }
 
     let group;
@@ -485,10 +626,18 @@ routerAdd(
     }
 
     let target;
-    try {
-      target = $app.findFirstRecordByFilter("users", "email = {:em}", { em: email });
-    } catch (_) {
-      throw new NotFoundError("No Kaheeta user with that email.");
+    if (targetUserId) {
+      try {
+        target = $app.findRecordById("users", targetUserId);
+      } catch (_) {
+        throw new NotFoundError("No Kaheeta user with that id.");
+      }
+    } else {
+      try {
+        target = $app.findFirstRecordByFilter("users", "email = {:em}", { em: email });
+      } catch (_) {
+        throw new NotFoundError("No Kaheeta user with that email.");
+      }
     }
 
     try {

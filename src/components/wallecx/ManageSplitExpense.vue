@@ -3,12 +3,16 @@ import { ref, computed, watch } from 'vue'
 import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { useToast } from '@/composables/useToast'
+import { useMobileEnv } from '@/composables/useMobileEnv'
 import { equalSplit, weightedSplit } from '@/lib/wallecx/splitMath'
 import { formatCents, COMMON_CURRENCIES } from '@/lib/wallecx/splitFormat'
+import { compressToWebP } from '@/lib/wallecx/compressToWebP'
+import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
 import { createSplitExpense, updateSplitExpense } from '@/lib/pocketbase/splitsApi'
 import type {
   Group,
   GroupMember,
+  PaymentMode,
   SplitType,
   SplitExpense,
   SplitShare,
@@ -20,6 +24,8 @@ const props = defineProps<{
   members: GroupMember[]
   expense?: SplitExpense | null
   expenseShares?: SplitShare[]
+  /** File token for the edit-mode receipt preview (protected file field). */
+  token?: string
 }>()
 
 const isEditMode = computed(() => !!props.expense)
@@ -60,6 +66,82 @@ const exactAmounts = ref<Record<string, number | null>>({}) // major units
 const percentages = ref<Record<string, number | null>>({})
 const shareCounts = ref<Record<string, number | null>>({})
 
+// Optional metadata (parity with the personal Add Expense form).
+const notes = ref('')
+const paymentMode = ref<string>('')
+const paymentModeOptions = [...PAYMENT_MODES]
+const pendingFile = ref<File | null>(null)
+const removeExistingReceipt = ref(false)
+const { isMobile } = useMobileEnv()
+
+const receiptThumbnailUrl = computed(() => {
+  const ex = props.expense
+  if (!ex?.receipt || removeExistingReceipt.value) return null
+  if (ex.receipt.toLowerCase().endsWith('.pdf')) return null
+  // Protected file field: the URL must carry a file token, fetched by the parent.
+  return pb.files.getURL(ex, ex.receipt, { token: props.token })
+})
+
+const hasExistingPdf = computed(
+  () =>
+    !!props.expense?.receipt &&
+    !removeExistingReceipt.value &&
+    props.expense.receipt.toLowerCase().endsWith('.pdf'),
+)
+
+// File select handler — EXIF strip + compression for images, direct assign for PDF.
+async function onFileSelect(event: { files: File[] }): Promise<void> {
+  const file = event.files[0]
+  if (!file) return
+
+  if (file.size > 10 * 1024 * 1024) {
+    toast.fileTooLarge()
+    return
+  }
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+  if (!allowedTypes.includes(file.type)) {
+    toast.fileTypeUnsupported('JPEG, PNG, WebP, or PDF')
+    return
+  }
+
+  if (file.type === 'application/pdf') {
+    pendingFile.value = file
+    removeExistingReceipt.value = false
+    return
+  }
+
+  try {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')!
+    const img = await createImageBitmap(file)
+    canvas.width = img.width
+    canvas.height = img.height
+    ctx.drawImage(img, 0, 0)
+    const strippedBlob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('Canvas toBlob failed'))),
+        file.type,
+      ),
+    )
+    const strippedFile = new File([strippedBlob], file.name, { type: file.type })
+    pendingFile.value = await compressToWebP(strippedFile)
+    removeExistingReceipt.value = false
+    toast.locationDataRemoved()
+  } catch {
+    toast.imageProcessFailed()
+    pendingFile.value = null
+  }
+}
+
+async function onRawFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  input.value = '' // reset so the same file can be re-selected
+  await onFileSelect({ files: [file] })
+}
+
 function memberLabel(m: GroupMember): string {
   return m.expand?.user?.name || m.expand?.user?.email || 'Member'
 }
@@ -99,9 +181,33 @@ const shareTotal = computed(() =>
   selectedParticipants.value.reduce((a, u) => a + (shareCounts.value[u] ?? 0), 0),
 )
 
-const isDirty = computed(
-  () => description.value.trim() !== '' || amount.value !== null,
-)
+interface FormSnapshot {
+  description: string
+  amount: number | null
+  currency: string
+  paidBy: string
+  splitType: FormSplitType
+  notes: string
+  paymentMode: string
+}
+
+const snapshot = ref<FormSnapshot | null>(null)
+
+const isDirty = computed(() => {
+  const s = snapshot.value
+  if (!s) return false
+  return (
+    description.value.trim() !== s.description ||
+    amount.value !== s.amount ||
+    currency.value !== s.currency ||
+    paidBy.value !== s.paidBy ||
+    splitType.value !== s.splitType ||
+    notes.value !== s.notes ||
+    paymentMode.value !== s.paymentMode ||
+    pendingFile.value !== null ||
+    removeExistingReceipt.value
+  )
+})
 
 // Seed the per-type inputs with sensible defaults for the current selection.
 function seedInputs(): void {
@@ -126,11 +232,16 @@ watch(splitType, seedInputs)
 watch(visible, (isOpen) => {
   if (!isOpen) {
     isSaving.value = false
+    pendingFile.value = null
+    removeExistingReceipt.value = false
+    snapshot.value = null
     return
   }
   exactAmounts.value = {}
   percentages.value = {}
   shareCounts.value = {}
+  pendingFile.value = null
+  removeExistingReceipt.value = false
 
   if (props.expense) {
     // Edit: prefill from the stored expense + its resolved shares. We only ever
@@ -144,10 +255,21 @@ watch(visible, (isOpen) => {
     paidBy.value = ex.paid_by
     currency.value = ex.currency || props.group.default_currency || 'USD'
     splitType.value = 'exact'
+    notes.value = ex.notes ?? ''
+    paymentMode.value = ex.payment_mode ?? ''
     selectedParticipants.value = exShares.map((s) => s.user)
     const exact: Record<string, number | null> = {}
     for (const s of exShares) exact[s.user] = s.amount / 100
     exactAmounts.value = exact
+    snapshot.value = {
+      description: description.value.trim(),
+      amount: amount.value,
+      currency: currency.value,
+      paidBy: paidBy.value,
+      splitType: splitType.value,
+      notes: notes.value,
+      paymentMode: paymentMode.value,
+    }
     return
   }
 
@@ -158,7 +280,18 @@ watch(visible, (isOpen) => {
   paidBy.value = currentUserId.value || props.members[0]?.user || ''
   currency.value = props.group.default_currency || 'USD'
   splitType.value = 'equal'
+  notes.value = ''
+  paymentMode.value = ''
   selectedParticipants.value = props.members.map((m) => m.user)
+  snapshot.value = {
+    description: '',
+    amount: null,
+    currency: currency.value,
+    paidBy: paidBy.value,
+    splitType: splitType.value,
+    notes: '',
+    paymentMode: '',
+  }
 })
 
 async function onSubmit(): Promise<void> {
@@ -208,18 +341,26 @@ async function onSubmit(): Promise<void> {
     split_type: splitType.value,
     expense_date: dayjs(expenseDate.value).format('YYYY-MM-DD'),
     paid_by: paidBy.value,
+    notes: notes.value.trim() || undefined,
+    payment_mode: (paymentMode.value || undefined) as PaymentMode | undefined,
     shares,
   }
 
   isSaving.value = true
   try {
+    const fileOpts = {
+      receipt: pendingFile.value,
+      removeReceipt: removeExistingReceipt.value,
+    }
     if (props.expense) {
-      await updateSplitExpense(props.expense.id, payload)
+      await updateSplitExpense(props.expense.id, payload, fileOpts)
       toast.success('Expense updated.')
     } else {
-      await createSplitExpense(payload)
+      await createSplitExpense(payload, fileOpts)
       toast.success('Expense added.')
     }
+    pendingFile.value = null
+    removeExistingReceipt.value = false
     emit('saved')
     baseDialogRef.value?.closeWithoutGuard()
   } catch (e: unknown) {
@@ -316,6 +457,43 @@ function onCancel(): void {
           :options="memberOptions"
           :disabled="isSaving"
           placeholder="Who paid?"
+        />
+      </div>
+
+      <!-- Payment mode (optional) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">
+          Payment mode
+          <span class="text-xs" style="color: var(--color-typo-muted)">(optional)</span>
+        </label>
+        <Select
+          v-model="paymentMode"
+          fluid
+          show-clear
+          option-label="label"
+          option-value="value"
+          :options="paymentModeOptions"
+          :disabled="isSaving"
+          placeholder="Select a payment mode"
+          enterkeyhint="next"
+        />
+      </div>
+
+      <!-- Notes (optional) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">
+          Notes
+          <span class="text-xs" style="color: var(--color-typo-muted)">(optional)</span>
+        </label>
+        <Textarea
+          v-model="notes"
+          fluid
+          :rows="3"
+          :autoResize="false"
+          :disabled="isSaving"
+          inputmode="text"
+          enterkeyhint="done"
+          autocomplete="off"
         />
       </div>
 
@@ -420,6 +598,89 @@ function onCancel(): void {
             {{ shareTotal }} share{{ shareTotal === 1 ? '' : 's' }}
           </template>
         </small>
+      </div>
+
+      <!-- Receipt (optional) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">
+          Receipt
+          <span class="text-xs" style="color: var(--color-typo-muted)">(optional)</span>
+        </label>
+
+        <!-- Edit mode: current attachment preview -->
+        <template v-if="isEditMode && expense?.receipt">
+          <img
+            v-if="receiptThumbnailUrl"
+            :src="receiptThumbnailUrl"
+            class="w-24 h-24 object-cover rounded"
+            alt="Current receipt"
+          />
+          <div
+            v-else-if="hasExistingPdf"
+            class="w-24 h-24 flex items-center justify-center border rounded"
+          >
+            <i class="pi pi-file-pdf text-3xl" aria-label="Receipt (PDF)"></i>
+          </div>
+          <p v-if="!removeExistingReceipt" class="text-sm" style="color: var(--color-typo-muted)">
+            Current receipt — select a new file to replace it
+          </p>
+          <p v-else class="text-sm" style="color: var(--color-typo-muted)">
+            Current receipt will be removed on save.
+          </p>
+          <div v-if="!pendingFile" class="flex items-center gap-2">
+            <Checkbox
+              v-model="removeExistingReceipt"
+              binary
+              inputId="remove-split-receipt"
+              :disabled="isSaving"
+            />
+            <label for="remove-split-receipt" class="text-sm">Remove current receipt</label>
+          </div>
+        </template>
+
+        <!-- Mobile: take photo / choose from gallery -->
+        <template v-if="isMobile">
+          <div class="flex gap-2">
+            <label class="p-button p-button-outlined p-button-secondary p-button-sm min-h-[44px] cursor-pointer flex items-center gap-2 flex-1">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                class="hidden"
+                :disabled="isSaving"
+                @change="onRawFileChange"
+              />
+              <i class="pi pi-camera" aria-hidden="true"></i>
+              Take photo
+            </label>
+            <label class="p-button p-button-outlined p-button-secondary p-button-sm min-h-[44px] cursor-pointer flex items-center gap-2 flex-1">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                class="hidden"
+                :disabled="isSaving"
+                @change="onRawFileChange"
+              />
+              <i class="pi pi-images" aria-hidden="true"></i>
+              Choose from gallery
+            </label>
+          </div>
+        </template>
+
+        <!-- Desktop -->
+        <FileUpload
+          v-else
+          mode="basic"
+          :auto="false"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          :chooseLabel="isEditMode && expense?.receipt ? 'Replace file' : 'Choose File'"
+          :disabled="isSaving"
+          @select="onFileSelect"
+        />
+
+        <p v-if="pendingFile" class="text-sm" style="color: var(--color-typo-muted)">
+          {{ pendingFile.name }} selected
+        </p>
       </div>
     </form>
 
