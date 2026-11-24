@@ -30,6 +30,9 @@ Legend: ☐ to do · ✅ pass · ❌ fail (note the ID + actual result)
 | P-7 | The hook is redeployed with `GET /api/kaheeta/groups/{id}/suggested-members` and member-by-user-id support. Quick check: an unauthenticated request returns **401**, not 404. |
 
 Frontend entry: log in → **My Wallet** → **Groups** tab (`mdi:account-group`).
+The tab is a two-pane surface: group rail on the left, the selected group
+(header, net position, actions, month-grouped feed, collapsible Members panel)
+on the right. Mobile drills down into the detail with a **Back to groups** button.
 
 ---
 
@@ -98,6 +101,8 @@ Run as **D** — a fourth account that is **not** a member of any test group.
 | SPL-S-4 | D: `POST /api/kaheeta/split-expenses` with `group` = Trip's id (D's token) | **403** "You are not a member of this group." (membership check) | ☐ |
 | SPL-S-5 | B (member, non-owner): `PATCH`/`DELETE /api/kaheeta/groups/{Trip}` | **403** "Only the group owner can …" | ☐ |
 | SPL-S-6 | Anyone: direct `POST /api/collections/kaheeta_split_expenses/records` (bypassing the hook) | **400/403** — collection create rule is admin-only; clients can't write rows directly | ☐ |
+| SPL-S-7 | D (non-member): `PATCH`/`DELETE /api/kaheeta/split-expenses/{Hotel}` | **403** "Only members of this group can edit/delete its expenses." | ☐ |
+| SPL-S-8 | B (member, non-owner): `PATCH`/`DELETE` Hotel (added by A) | **200** — any group member may modify a group expense | ☐ |
 
 ---
 
@@ -116,10 +121,10 @@ Run as **D** — a fourth account that is **not** a member of any test group.
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-U-1 | Open a group detail on **desktop** (wide viewport) | Renders as a centered **Dialog** | ☐ |
-| SPL-U-2 | Open the same on **mobile** (narrow / device) | Renders as a bottom **Drawer** with a drag handle; balances, feed, members, and **Add expense** all reachable | ☐ |
+| SPL-U-1 | Open the Groups tab on **desktop** (wide viewport) | Two panes: a group rail on the left and the selected group's detail on the right — **no** Dialog | ☐ |
+| SPL-U-2 | Open the same on **mobile** (narrow / device) | Drill-down: the rail, then the inline detail with a **Back to groups** button — **no** Drawer | ☐ |
 | SPL-U-3 | Add-expense form on mobile | Inputs are ≥16px (no iOS zoom); date picker + checkboxes usable; respects bottom safe-area | ☐ |
-| SPL-U-4 | After leaving/deleting a group | Detail closes and the group list refreshes (the group is gone) | ☐ |
+| SPL-U-4 | After leaving/deleting a group | The rail refreshes (group gone); mobile returns to the rail; desktop selects the next group | ☐ |
 
 ---
 
@@ -157,9 +162,9 @@ Each row: add an expense with the given method, then check the shares persisted 
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-D-1 | As the **adder**: trash icon on your expense → confirm | Toast "Expense deleted."; row leaves the feed; balances recompute | ☐ |
-| SPL-D-2 | As the **group owner**: delete an expense added by someone else | Allowed (owner override) | ☐ |
-| SPL-D-3 | As a **member who is neither adder nor owner** | No trash icon shown; and `DELETE /api/kaheeta/split-expenses/{id}` via curl → **403** | ☐ |
+| SPL-D-1 | Expand a row (or open its ⋮ menu) → **Delete** → confirm | Confirmation names who added it; toast "Expense deleted."; row leaves the feed; balances recompute | ☐ |
+| SPL-D-2 | As a **member who is neither adder nor the owner**: delete an expense added by someone else | Allowed (membership-scoped) and balances recompute | ☐ |
+| SPL-D-3 | As a **non-member** (D): `DELETE /api/kaheeta/split-expenses/{id}` via curl | **403** "Only members of this group can delete its expenses." | ☐ |
 | SPL-D-4 | After delete, inspect the row | `deleted_at` is set (soft delete); the row still exists but is excluded from reads/balances | ☐ |
 | SPL-D-5 | Delete a **settlement** | The cancelled balance reappears (settlement removed from recompute) | ☐ |
 
@@ -180,7 +185,7 @@ You 50, You owe Carol 50 (you net zero).
 |----|------|----------|--------|
 | SPL-J-1 | Open the group as **owner** | A "Simplify" toggle shows next to Balances (off by default) | ☐ |
 | SPL-J-2 | Raw view (toggle off) | You see both raw rows: "Bob owes you …" and "You owe Carol …" | ☐ |
-| SPL-J-3 | Flip **Simplify** on | Balances collapse — you net to zero → "All settled up"; the Bob→Carol transfer no longer routes through you | ☐ |
+| SPL-J-3 | Flip **Simplify** on | Balances collapse — you net to zero → "You're all settled up."; the Bob→Carol transfer no longer routes through you | ☐ |
 | SPL-J-4 | Reopen the group later | Toggle state persisted (the group's `simplify_debts` flag) | ☐ |
 | SPL-J-5 | As a **non-owner** member | No toggle; if simplify is on, a "· simplified" hint shows and balances are simplified | ☐ |
 | SPL-J-6 | Totals unchanged | Each person's net owed/owing is identical to the raw view — only the number of transfers drops | ☐ |
@@ -189,12 +194,17 @@ You 50, You owe Carol 50 (you net zero).
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-K-1 | Pencil icon on an expense (adder or owner; **not** settlements) → opens "Edit expense" | Form prefilled in **Exact** mode from the stored shares; amount/date/payer match | ☐ |
+| SPL-K-1 | Expand a row → **Edit** (or the ⋮ menu) | The selector matches the stored split method (Equally / Exact / Percent / Shares) with reconstructed per-person inputs; amount/date/payer match | ☐ |
 | SPL-K-2 | Change the amount/shares and **Save changes** | Feed + balances update; shares still sum to the amount | ☐ |
 | SPL-K-3 | Rename and save | The new name shows in the feed | ☐ |
-| SPL-K-4 | As a member who is neither adder nor owner | No pencil; `PATCH /api/kaheeta/split-expenses/{id}` via curl → **403** | ☐ |
+| SPL-K-4 | As any **member** (non-owner, not the adder) | Edit and Delete are available; `PATCH /api/kaheeta/split-expenses/{id}` → **200**. A **non-member** gets **403** | ☐ |
 | SPL-K-5 | Edit with shares NOT summing to the amount (via curl) | **400** "Shares must sum to the expense amount."; row unchanged | ☐ |
-| SPL-K-6 | Settlement rows | No pencil (settlements are delete + re-record, not edited) | ☐ |
+| SPL-K-6 | Settlement row → **Edit settlement** | Settlement mode: amount, currency, date, payer (debtor), one recipient, notes/payment mode/receipt editable; `split_type` stays `settlement` | ☐ |
+| SPL-K-7 | Stored **Exact** split 60/30/10 → first open | Inputs show 60.00 / 30.00 / 10.00 (not an equal split); no close/reopen needed | ☐ |
+| SPL-K-8 | Stored **Percent** 50/25/25 and **Shares** 2/1/1 | Editor opens in Percent with 50/25/25 and in Shares with 2/1/1 | ☐ |
+| SPL-K-9 | Notes-only edit of a stored split | The saved shares are byte-for-byte unchanged (no cent drift) | ☐ |
+| SPL-K-10 | Add an expense with only yourself in **Split between** | Row shows an **Only you** Tag; expand shows your single share | ☐ |
+| SPL-K-11 | Rows for a shared expense | Summary shows the payer and **your share**; a non-participant row shows **not included**; expanding lists every member's share | ☐ |
 
 ## L. Multi-currency
 
@@ -217,13 +227,13 @@ You 50, You owe Carol 50 (you net zero).
 | SPL-M6-4 | With Simplify on across two currencies | Simplification runs **per currency** | ☐ |
 | SPL-M6-5 | Edit an expense | Currency prefills from the stored value | ☐ |
 
-## N. Group export (desktop only)
+## N. Group export (CSV on every viewport)
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-N-1 | Open a group on **desktop** | A "Download records" button shows next to Add expense | ☐ |
-| SPL-N-2 | Click it | Downloads `kaheeta-<group>-<date>.json` with group meta, members, balances, and expenses+shares | ☐ |
-| SPL-N-3 | Open a group on **mobile** | **No** Download records button (hidden, mirroring Expenses) | ☐ |
+| SPL-N-1 | Open a group | An **Export CSV** button (file icon) is in the header on desktop **and** mobile | ☐ |
+| SPL-N-2 | Click **Export CSV** | Downloads `kaheeta-<group>-shares-<date>.csv`, one row per (expense × member share) with group, date, description, split type, currency, expense amount, payer, member, member share, is_payer, my_share, notes; settlements included | ☐ |
+| SPL-N-3 | Open **Group actions** on desktop | **Download JSON** (backup: group meta, members, balances, expenses+shares) is available; it is absent on mobile | ☐ |
 
 ---
 
@@ -231,7 +241,7 @@ You 50, You owe Carol 50 (you net zero).
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-O-1 | Add an expense with a **payment mode** and **notes** | Feed shows the payment-mode chip and the notes line; `GET` of the row returns both; the group JSON export includes `payment_mode` + `notes` | ☐ |
+| SPL-O-1 | Add an expense with a **payment mode** and **notes** | The row shows the payment-mode Tag; expanding it shows the notes; the group JSON export includes `payment_mode` + `notes` | ☐ |
 | SPL-O-2 | Attach a **receipt** (photo + PDF) and save, then reopen the expense | Paperclip appears in the feed; another **group member** opens the preview successfully; a non-member gets no file access | ☐ |
 | SPL-O-3 | Edit the expense: replace the receipt; then use **Remove current receipt** and save | New file replaces the old; removal clears the field and the paperclip disappears | ☐ |
 | SPL-O-4 | As the owner, open a group you own after previously adding people to another group | A **Frequent** chip row lists those people (most shared groups first) and omits current members + yourself | ☐ |
