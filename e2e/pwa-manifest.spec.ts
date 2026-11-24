@@ -24,7 +24,8 @@ test.describe("PWA manifest & icons", () => {
     expect(manifest.display).toBe("standalone");
     expect(manifest.start_url).toBe("/");
     expect(manifest.icons.length).toBeGreaterThanOrEqual(3);
-    expect(manifest.shortcuts?.length).toBe(4);
+    // Add Expense, Add Vaccination, Add Membership, Open Reports, Open Notes.
+    expect(manifest.shortcuts?.length).toBe(5);
     // A maskable icon is required for adaptive Android home-screen icons.
     expect(
       manifest.icons.some((i: ManifestIcon) =>
