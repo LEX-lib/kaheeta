@@ -161,7 +161,7 @@ const memberOptions = computed(() =>
 const counterpartyOptions = computed(() => {
   const options = memberOptions.value.filter((o) => o.value !== paidBy.value)
   const current = settlementTo.value
-  if (current && !options.some((o) => o.value === current)) {
+  if (current && current !== paidBy.value && !options.some((o) => o.value === current)) {
     const known = props.members.find((m) => m.user === current)
     options.push({ label: known ? memberLabel(known) : 'Former member', value: current })
   }

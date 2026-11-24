@@ -106,21 +106,25 @@ export async function mockSplitsApi(
     return r.fulfill({ status: 200, contentType: "application/json", body: listBody(live) });
   });
 
-  const validateShares = (body: Rec, route: import("@playwright/test").Route) => {
+  const validateShares = async (
+    body: Rec,
+    route: import("@playwright/test").Route,
+    effectiveSplitType: unknown,
+  ): Promise<boolean> => {
     const amount = Number(body.amount);
     const rows = (body.shares as Array<{ user: string; amount: number }>) ?? [];
     const sum = rows.reduce((total, s) => total + Number(s.amount), 0);
     if (sum !== amount) {
-      void json(route, 400, { message: "Shares must sum to the expense amount." });
+      await json(route, 400, { message: "Shares must sum to the expense amount." });
       return false;
     }
-    if (body.split_type === "settlement") {
+    if (effectiveSplitType === "settlement") {
       if (rows.length !== 1) {
-        void json(route, 400, { message: "A settlement must have exactly one counterparty." });
+        await json(route, 400, { message: "A settlement must have exactly one counterparty." });
         return false;
       }
       if (rows[0]!.user === body.paid_by) {
-        void json(route, 400, { message: "A settlement needs two different people." });
+        await json(route, 400, { message: "A settlement needs two different people." });
         return false;
       }
     }
@@ -131,7 +135,7 @@ export async function mockSplitsApi(
   await page.route("**/api/kaheeta/split-expenses", async (route) => {
     if (route.request().method() !== "POST") return route.fallback();
     const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
-    if (!validateShares(body, route)) return;
+    if (!(await validateShares(body, route, body.split_type))) return;
     posted.push(body);
     const id = genId("e_");
     expenses.push({
@@ -180,19 +184,19 @@ export async function mockSplitsApi(
       const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
       if (!ex) return json(route, 404, { message: "Expense not found." });
 
-      // Mirror the hook's membership-scoped authorization.
-      const isMember = memberInfos.some((m) => m.user === "e2e_user");
-      if (ex.added_by !== "e2e_user" && !isMember) {
-        return json(route, 403, { message: "Only members of this group can edit its expenses." });
-      }
-      if (!validateShares(body, route)) return;
+      // The e2e user is always a member of the fixture group, so the hook's
+      // membership gate is always satisfied here; server-side authz coverage
+      // lives in the manual test plan (live PocketBase).
+      const storedType = ex.split_type;
+      const effectiveType =
+        storedType === "settlement" ? "settlement" : (body.split_type ?? storedType);
+      if (!(await validateShares(body, route, effectiveType))) return;
 
       // A stored settlement stays a settlement, even if the body omits it.
-      const storedType = ex.split_type;
       ex.name = body.name ?? ex.name;
       ex.amount = body.amount ?? ex.amount;
       ex.currency = body.currency ?? ex.currency ?? "USD";
-      ex.split_type = storedType === "settlement" ? "settlement" : (body.split_type ?? storedType);
+      ex.split_type = effectiveType;
       ex.expense_date = body.expense_date ?? ex.expense_date;
       ex.paid_by = body.paid_by ?? ex.paid_by;
       ex.notes = body.notes ?? "";

@@ -373,13 +373,6 @@ function openAddExpense(): void {
   showManage.value = true
 }
 
-// Any viewer of this pane is a member of the group (the list/view rules only
-// expose a group to its members), so every row is editable — settlements are
-// edited through their dedicated mode in ManageSplitExpense.
-function canEditExpense(_ex: SplitExpense): boolean {
-  return true
-}
-
 async function openEditExpense(ex: SplitExpense): Promise<void> {
   // Edit mode with an existing receipt needs a file token to render the thumbnail.
   try {
@@ -427,11 +420,6 @@ async function onSettleSaved(): Promise<void> {
   showSettle.value = false
   settleInitial.value = null
   await loadLedger()
-}
-
-// Any member of the group may delete an expense or settlement.
-function canDeleteExpense(_ex: SplitExpense): boolean {
-  return true
 }
 
 function confirmDeleteExpense(ex: SplitExpense): void {
@@ -677,6 +665,8 @@ async function doDeleteGroup(): Promise<void> {
         <section v-for="bucket in groupedExpenses" :key="bucket.key" class="gd-month">
           <p class="gd-month-label">{{ bucket.label }}</p>
           <div class="gd-month-rows">
+            <!-- Any viewer of this pane is a group member (the read rules only
+                 expose a group to its members), so every row is editable. -->
             <SplitExpenseRow
               v-for="ex in bucket.items"
               :key="ex.id"
@@ -684,8 +674,8 @@ async function doDeleteGroup(): Promise<void> {
               :shares="sharesFor(ex.id)"
               :members="members"
               :current-user-id="currentUserId"
-              :can-edit="canEditExpense(ex)"
-              :can-delete="canDeleteExpense(ex)"
+              :can-edit="true"
+              :can-delete="true"
               @edit="openEditExpense"
               @delete="confirmDeleteExpense"
               @preview="openReceiptPreview"

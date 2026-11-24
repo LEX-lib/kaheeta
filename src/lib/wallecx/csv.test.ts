@@ -76,6 +76,8 @@ describe('csvEscape', () => {
     expect(csvEscape('-1')).toBe("'-1")
     expect(csvEscape('@cmd')).toBe("'@cmd")
     expect(csvEscape('=a,b')).toBe("\"'=a,b\"")
+    // Numeric cells must stay numeric (they sum in the spreadsheet).
+    expect(csvEscape(-500)).toBe("-500")
   })
 })
 

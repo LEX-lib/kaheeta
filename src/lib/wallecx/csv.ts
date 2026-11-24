@@ -10,8 +10,9 @@ import type { SplitExpense, SplitShare } from '@/types/wallecx/splits/types'
 /** RFC 4180 escaping: quote when the value contains a separator, quote or newline. */
 export function csvEscape(value: unknown): string {
   let text = value === null || value === undefined ? '' : String(value)
-  // Neutralize spreadsheet formula injection (=, +, -, @, tab/CR prefixes).
-  if (/^[=+\-@\t\r]/.test(text)) {
+  // Neutralize spreadsheet formula injection on text cells. Numbers (including
+  // negative ones) must stay numeric so they still sum in the sheet.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) {
     text = `'${text}`
   }
   if (/[",\r\n]/.test(text)) {
