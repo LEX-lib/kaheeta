@@ -9,6 +9,7 @@ import { useConfirm } from 'primevue/useconfirm' // explicit — NOT auto-resolv
 import { computeBalances } from '@/lib/wallecx/balances'
 import { simplifyDebts } from '@/lib/wallecx/simplifyDebts'
 import { formatCents } from '@/lib/wallecx/splitFormat'
+import { buildGroupSharesCsv, groupSharesCsvFilename } from '@/lib/wallecx/csv'
 import {
   leaveGroup,
   deleteGroup,
@@ -66,6 +67,7 @@ const settleBalance = ref<BalanceSummary | null>(null)
 const simplifyOn = ref(props.group.simplify_debts)
 const isSavingSimplify = ref(false)
 const isExporting = ref(false)
+const isExportingCsv = ref(false)
 
 // Receipt preview mirrors the Expenses tab: token required for protected files.
 const isMobile = useIsMobile()
@@ -161,6 +163,37 @@ function exportJson(): void {
     console.error('GroupDetail: exportJson failed', e)
   } finally {
     isExporting.value = false
+  }
+}
+
+// CSV report: one row per (expense × member share) so any member can filter
+// their own share in a spreadsheet. Available on every viewport.
+function exportCsv(): void {
+  if (isExportingCsv.value) return
+  isExportingCsv.value = true
+  try {
+    const csv = buildGroupSharesCsv({
+      groupName: props.group.name,
+      expenses: expenses.value,
+      shares: shares.value,
+      currentUserId: props.currentUserId,
+      nameForUser,
+    })
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = groupSharesCsvFilename(props.group.name, dayjs().format('YYYY-MM-DD'))
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+    toast.success('CSV report exported.')
+  } catch (e: unknown) {
+    toast.error('Export failed. Please try again.')
+    console.error('GroupDetail: exportCsv failed', e)
+  } finally {
+    isExportingCsv.value = false
   }
 }
 
@@ -452,7 +485,16 @@ async function doDelete(): Promise<void> {
           <span v-else-if="simplifyOn" class="text-xs opacity-60">· simplified</span>
         </div>
         <div class="flex items-center gap-2">
-          <!-- Export is desktop-only (hidden on mobile), mirroring Expenses. -->
+          <Button
+            label="Export CSV"
+            icon="pi pi-file-excel"
+            size="small"
+            severity="secondary"
+            :loading="isExportingCsv"
+            :disabled="ledgerLoading"
+            @click="exportCsv"
+          />
+          <!-- JSON backup is desktop-only (hidden on mobile), mirroring Expenses. -->
           <span class="hidden sm:contents">
             <Button
               label="Download records"

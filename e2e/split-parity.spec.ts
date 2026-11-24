@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { seedAuth, stubPocketBase } from "./helpers/pwa";
 import { mockSplitsApi } from "./helpers/splits";
 
@@ -44,6 +45,40 @@ test.describe("Split group detail — viewport parity", () => {
     expect(download.suggestedFilename()).toMatch(/\.json$/);
   });
 
+  test("CSV export downloads a per-member shares report", async ({ page }) => {
+    await mockSplitsApi(page, {
+      expenses: [
+        {
+          id: "d1",
+          group: "g1",
+          paid_by: "u_bob",
+          added_by: "u_bob",
+          name: "Dinner",
+          amount: 10000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-01",
+        },
+      ],
+      shares: [
+        { id: "sh_a", expense: "d1", user: "e2e_user", amount: 5000 },
+        { id: "sh_b", expense: "d1", user: "u_bob", amount: 5000 },
+      ],
+    });
+    await openTrip(page);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Export CSV" }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^kaheeta-trip-shares-\d{4}-\d{2}-\d{2}\.csv$/);
+
+    const content = readFileSync((await download.path())!, "utf8");
+    expect(content.startsWith("\ufeff")).toBe(true);
+    expect(content).toContain("member_share");
+    expect(content).toContain("2026-06-01,Dinner,equal,PHP,100.00,Bob,You,50.00,false,50.00");
+  });
+
   test.describe("mobile", () => {
     test.use({ viewport: { width: 390, height: 800 } });
 
@@ -56,9 +91,10 @@ test.describe("Split group detail — viewport parity", () => {
       await expect(page.locator(".p-dialog")).toHaveCount(0);
     });
 
-    test("Download records is hidden on mobile", async ({ page }) => {
+    test("Download records is hidden on mobile, CSV is available", async ({ page }) => {
       await openTrip(page);
       await expect(page.getByRole("button", { name: "Download records" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
     });
 
     test("add-expense inputs are ≥16px (iOS no-zoom)", async ({ page }) => {
