@@ -46,6 +46,12 @@ const myShareCents = computed(() => myShare.value?.amount ?? 0)
 // "Only me" is an expense whose split list is exactly one participant. Show it
 // to everyone (the other members need to know why they are not involved).
 const soloShare = computed(() => (props.shares.length === 1 ? props.shares[0] : null))
+const settlementPayee = computed(() => {
+  if (soloShare.value) return nameForUser(soloShare.value.user)
+  const names = props.shares.map((s) => nameForUser(s.user))
+  return names.length ? names.join(', ') : 'a member'
+})
+
 const onlyLabel = computed(() => {
   if (isSettlement.value || !soloShare.value) return null
   return soloShare.value.user === props.currentUserId
@@ -131,7 +137,8 @@ function toggleMenu(event: Event): void {
           <span class="sx-name">{{ expense.name }}</span>
           <span class="sx-meta">
             <template v-if="isSettlement">
-              {{ payerName }} paid {{ nameForUser(soloShare?.user ?? '') }}
+              {{ payerName }} paid {{ settlementPayee }}
+              {{ formatCents(expense.amount, expense.currency) }}
             </template>
             <template v-else>{{ payerName }} paid {{ formatCents(expense.amount, expense.currency) }}</template>
             <template v-if="!isSettlement && myShare">
@@ -150,12 +157,6 @@ function toggleMenu(event: Event): void {
         <span class="sx-amounts">
           <span class="sx-total tabular-nums">
             {{ formatCents(expense.amount, expense.currency) }}
-          </span>
-          <span
-            v-if="!isSettlement && myShare && expense.paid_by !== currentUserId"
-            class="sx-share"
-          >
-            you owe {{ formatCents(myShareCents, expense.currency) }}
           </span>
         </span>
       </button>
@@ -321,11 +322,6 @@ function toggleMenu(event: Event): void {
 .sx-total {
   font-weight: 600;
   color: var(--color-typo-heading);
-  white-space: nowrap;
-}
-.sx-share {
-  font-size: 0.75rem;
-  color: var(--p-amber-500);
   white-space: nowrap;
 }
 .sx-actions {

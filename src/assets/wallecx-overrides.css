@@ -267,7 +267,11 @@
 /* Checklist actions ⋮ menu: tint the Delete item. The PrimeVue Menu teleports
  * to <body>, so this must be global (ChecklistsTab's scoped CSS can't reach it). */
 .cl-menu-danger .p-menu-item-link,
-.cl-menu-danger .p-menu-item-icon {
+.cl-menu-danger .p-menu-item-icon,
+.gd-menu-danger .p-menu-item-link,
+.gd-menu-danger .p-menu-item-icon,
+.sx-menu-danger .p-menu-item-link,
+.sx-menu-danger .p-menu-item-icon {
   color: var(--color-status-error);
 }
 

@@ -74,7 +74,7 @@ const isExportingCsv = ref(false)
 const membersCollapsed = ref(true)
 
 // Receipt preview mirrors the Expenses tab: token required for protected files.
-const isMobile = useIsMobile()
+const isMobile = useIsMobile(767)
 const showPreview = ref(false)
 const previewRecord = ref<SplitExpense | null>(null)
 const previewToken = ref('')
@@ -373,10 +373,11 @@ function openAddExpense(): void {
   showManage.value = true
 }
 
-// Every viewer of a group expense is a member of that group, so any member may
-// edit any expense — including settlements (edited through a dedicated mode).
-function canEditExpense(ex: SplitExpense): boolean {
-  return !!ex.group
+// Any viewer of this pane is a member of the group (the list/view rules only
+// expose a group to its members), so every row is editable — settlements are
+// edited through their dedicated mode in ManageSplitExpense.
+function canEditExpense(_ex: SplitExpense): boolean {
+  return true
 }
 
 async function openEditExpense(ex: SplitExpense): Promise<void> {
@@ -429,8 +430,8 @@ async function onSettleSaved(): Promise<void> {
 }
 
 // Any member of the group may delete an expense or settlement.
-function canDeleteExpense(ex: SplitExpense): boolean {
-  return !!ex.group
+function canDeleteExpense(_ex: SplitExpense): boolean {
+  return true
 }
 
 function confirmDeleteExpense(ex: SplitExpense): void {

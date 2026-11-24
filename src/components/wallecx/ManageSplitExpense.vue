@@ -155,10 +155,18 @@ const memberOptions = computed(() =>
   props.members.map((m) => ({ label: memberLabel(m), value: m.user })),
 )
 
-// Settlement counterparty: every member except the debtor who paid.
-const counterpartyOptions = computed(() =>
-  memberOptions.value.filter((o) => o.value !== paidBy.value),
-)
+// Settlement counterparty: every member except the debtor who paid. If the
+// stored recipient has since left the group, keep them selectable so an
+// amount/date-only edit does not dead-end on a blank field.
+const counterpartyOptions = computed(() => {
+  const options = memberOptions.value.filter((o) => o.value !== paidBy.value)
+  const current = settlementTo.value
+  if (current && !options.some((o) => o.value === current)) {
+    const known = props.members.find((m) => m.user === current)
+    options.push({ label: known ? memberLabel(known) : 'Former member', value: current })
+  }
+  return options
+})
 
 const amountCents = computed(() => Math.round((amount.value ?? 0) * 100))
 
@@ -200,6 +208,7 @@ interface FormSnapshot {
   notes: string
   paymentMode: string
   settlementTo: string
+  expenseDate: string
 }
 
 const snapshot = ref<FormSnapshot | null>(null)
@@ -215,6 +224,7 @@ const isDirty = computed(() => {
     splitType.value !== s.splitType ||
     notes.value !== s.notes ||
     paymentMode.value !== s.paymentMode ||
+    dayjs(expenseDate.value).format('YYYY-MM-DD') !== s.expenseDate ||
     settlementTo.value !== s.settlementTo ||
     (splitSnapshot.value !== null && splitSignature() !== splitSnapshot.value) ||
     pendingFile.value !== null ||
@@ -334,6 +344,7 @@ watch(visible, (isOpen) => {
       notes: notes.value,
       paymentMode: paymentMode.value,
       settlementTo: settlementTo.value,
+      expenseDate: dayjs(expenseDate.value).format('YYYY-MM-DD'),
     }
     return
   }
@@ -359,6 +370,7 @@ watch(visible, (isOpen) => {
     notes: '',
     paymentMode: '',
     settlementTo: '',
+    expenseDate: dayjs(expenseDate.value).format('YYYY-MM-DD'),
   }
 })
 

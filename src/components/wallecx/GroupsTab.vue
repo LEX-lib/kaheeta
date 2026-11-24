@@ -25,8 +25,11 @@ const groups = ref<Group[]>([])
 const isLoading = ref(false)
 const selectedId = ref<string | null>(null)
 
+// No first-group fallback here: during a reload after leave/delete, the stale
+// list would briefly re-render the group we just removed. The groups watcher
+// seeds the selection once the fresh list lands.
 const selectedGroup = computed<Group | null>(
-  () => groups.value.find((g) => g.id === selectedId.value) ?? groups.value[0] ?? null,
+  () => groups.value.find((g) => g.id === selectedId.value) ?? null,
 )
 
 // --- Create group dialog ---
@@ -155,7 +158,9 @@ function closeDetail(): void {
 // GroupDetail emits these after a successful leave/delete; reload the rail and
 // leave the detail (mobile) or select the next group (desktop).
 async function onGroupGone(): Promise<void> {
-  selectedId.value = null
+  const remaining = groups.value.filter((g) => g.id !== selectedId.value)
+  groups.value = remaining
+  selectedId.value = remaining[0]?.id ?? null
   detailOpen.value = false
   await loadGroups()
 }
@@ -163,7 +168,7 @@ async function onGroupGone(): Promise<void> {
 // GroupDetail persisted the group's simplify flag; update our cached object
 // (the same reference the rail shows) so reopening reflects the new state.
 function onSimplifyChanged(value: boolean): void {
-  const group = groups.value.find((g) => g.id === selectedId.value)
+  const group = selectedGroup.value
   if (group) {
     group.simplify_debts = value
   }
