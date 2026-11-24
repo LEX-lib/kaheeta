@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { useToast } from '@/composables/useToast'
 import { useMobileEnv } from '@/composables/useMobileEnv'
-import { equalSplit, weightedSplit } from '@/lib/wallecx/splitMath'
+import { equalSplit, weightedSplit, percentagesFromShares, shareCountsFromShares } from '@/lib/wallecx/splitMath'
 import { formatCents, COMMON_CURRENCIES } from '@/lib/wallecx/splitFormat'
 import { compressToWebP } from '@/lib/wallecx/compressToWebP'
 import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
@@ -204,12 +204,16 @@ const isDirty = computed(() => {
     splitType.value !== s.splitType ||
     notes.value !== s.notes ||
     paymentMode.value !== s.paymentMode ||
+    (splitSnapshot.value !== null && splitSignature() !== splitSnapshot.value) ||
     pendingFile.value !== null ||
     removeExistingReceipt.value
   )
 })
 
 // Seed the per-type inputs with sensible defaults for the current selection.
+// Called ONLY from an explicit split-type change (not a watcher): prefill in
+// edit mode writes its own per-person values, and a watcher used to overwrite
+// them with an equal split on the first open (stored exact splits looked equal).
 function seedInputs(): void {
   const sel = selectedParticipants.value
   if (splitType.value === 'exact') {
@@ -226,7 +230,45 @@ function seedInputs(): void {
   }
 }
 
-watch(splitType, seedInputs)
+function onSplitTypeChange(value: FormSplitType): void {
+  splitType.value = value
+  seedInputs()
+}
+
+// 'adjustment' is a legacy type with no inputs of its own; exact is its closest
+// editable form. 'settlement' is edited through a dedicated mode downstream.
+function formSplitTypeFromStored(stored: SplitType): FormSplitType {
+  if (stored === 'equal' || stored === 'percentage' || stored === 'share') {
+    return stored
+  }
+  return 'exact'
+}
+
+function centsByUser(from: SplitShare[]): Record<string, number> {
+  const m: Record<string, number> = {}
+  for (const s of from) m[s.user] = s.amount
+  return m
+}
+
+// A stable fingerprint of everything that produces the saved shares. When it
+// still matches the value captured at prefill, a save reuses the stored shares
+// verbatim — notes/receipt-only edits must never move a cent, and percentage /
+// share weights are reconstructed approximately.
+function splitSignature(): string {
+  const sel = [...selectedParticipants.value].sort()
+  const dump = (src: Record<string, number | null>): string =>
+    sel.map((u) => `${u}:${src[u] ?? 0}`).join(',')
+  return [
+    amountCents.value,
+    splitType.value,
+    sel.join(','),
+    dump(exactAmounts.value),
+    dump(percentages.value),
+    dump(shareCounts.value),
+  ].join('|')
+}
+
+const splitSnapshot = ref<string | null>(null)
 
 // Reset/prefill the form each time the dialog opens.
 watch(visible, (isOpen) => {
@@ -235,6 +277,7 @@ watch(visible, (isOpen) => {
     pendingFile.value = null
     removeExistingReceipt.value = false
     snapshot.value = null
+    splitSnapshot.value = null
     return
   }
   exactAmounts.value = {}
@@ -244,9 +287,9 @@ watch(visible, (isOpen) => {
   removeExistingReceipt.value = false
 
   if (props.expense) {
-    // Edit: prefill from the stored expense + its resolved shares. We only ever
-    // persisted resolved amounts, so edit always opens in Exact mode (the user
-    // can switch). Settlements aren't editable here (filtered upstream).
+    // Edit: prefill from the stored expense + its resolved shares. The split
+    // method comes from the stored `split_type`; its per-person inputs are
+    // reconstructed from the saved cents (only amounts are persisted).
     const ex = props.expense
     const exShares = props.expenseShares ?? []
     description.value = ex.name
@@ -254,13 +297,21 @@ watch(visible, (isOpen) => {
     expenseDate.value = ex.expense_date ? new Date(ex.expense_date) : new Date()
     paidBy.value = ex.paid_by
     currency.value = ex.currency || props.group.default_currency || 'USD'
-    splitType.value = 'exact'
+    splitType.value = formSplitTypeFromStored(ex.split_type)
     notes.value = ex.notes ?? ''
     paymentMode.value = ex.payment_mode ?? ''
     selectedParticipants.value = exShares.map((s) => s.user)
-    const exact: Record<string, number | null> = {}
-    for (const s of exShares) exact[s.user] = s.amount / 100
-    exactAmounts.value = exact
+    const storedCents = centsByUser(exShares)
+    if (splitType.value === 'exact') {
+      const exact: Record<string, number | null> = {}
+      for (const s of exShares) exact[s.user] = s.amount / 100
+      exactAmounts.value = exact
+    } else if (splitType.value === 'percentage') {
+      percentages.value = percentagesFromShares(storedCents)
+    } else if (splitType.value === 'share') {
+      shareCounts.value = shareCountsFromShares(storedCents)
+    }
+    splitSnapshot.value = splitSignature()
     snapshot.value = {
       description: description.value.trim(),
       amount: amount.value,
@@ -283,6 +334,7 @@ watch(visible, (isOpen) => {
   notes.value = ''
   paymentMode.value = ''
   selectedParticipants.value = props.members.map((m) => m.user)
+  splitSnapshot.value = null
   snapshot.value = {
     description: '',
     amount: null,
@@ -327,11 +379,19 @@ async function onSubmit(): Promise<void> {
     return
   }
 
-  const shareMap = computedShares.value
-  const shares = selectedParticipants.value.map((user) => ({
-    user,
-    amount: shareMap[user] ?? 0,
-  }))
+  // If nothing that produces the split changed, reuse the stored shares exactly
+  // (reconstructed percentage/share weights can be a cent off for odd amounts).
+  const splitUntouched =
+    !!props.expense &&
+    splitSnapshot.value !== null &&
+    splitSignature() === splitSnapshot.value &&
+    (props.expenseShares?.length ?? 0) > 0
+  const shares = splitUntouched
+    ? props.expenseShares!.map((s) => ({ user: s.user, amount: s.amount }))
+    : selectedParticipants.value.map((user) => ({
+        user,
+        amount: computedShares.value[user] ?? 0,
+      }))
 
   const payload = {
     group: props.group.id,
@@ -501,12 +561,13 @@ function onCancel(): void {
       <div class="flex flex-col gap-1">
         <label class="text-sm" style="color: var(--color-typo-heading)">Split</label>
         <SelectButton
-          v-model="splitType"
+          :model-value="splitType"
           :options="SPLIT_TYPE_OPTIONS"
           option-label="label"
           option-value="value"
           :allow-empty="false"
           :disabled="isSaving"
+          @update:model-value="onSplitTypeChange"
         />
       </div>
 

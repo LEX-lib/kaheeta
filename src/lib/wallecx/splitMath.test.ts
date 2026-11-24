@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { equalSplit, weightedSplit } from './splitMath';
+import {
+  equalSplit,
+  weightedSplit,
+  percentagesFromShares,
+  shareCountsFromShares,
+} from './splitMath';
 
 const sum = (m: Record<string, number>) => Object.values(m).reduce((a, b) => a + b, 0);
 
@@ -91,5 +96,82 @@ describe('weightedSplit', () => {
         expect(sum(weightedSplit(total, w))).toBe(total);
       }
     }
+  });
+});
+
+describe('percentagesFromShares', () => {
+  it('recovers an even 50/50 split', () => {
+    expect(percentagesFromShares({ a: 7666, b: 7665 })).toEqual({ a: 50, b: 50 });
+  });
+
+  it('recovers 50/25/25', () => {
+    expect(percentagesFromShares({ a: 5000, b: 2500, c: 2500 })).toEqual({
+      a: 50,
+      b: 25,
+      c: 25,
+    });
+  });
+
+  it('recovers a third each with the remainder cent to the leftmost', () => {
+    expect(percentagesFromShares({ a: 3334, b: 3333, c: 3333 })).toEqual({
+      a: 34,
+      b: 33,
+      c: 33,
+    });
+  });
+
+  it('always sums to 100 for non-zero stored shares', () => {
+    const sets: Record<string, number>[] = [
+      { a: 1, b: 1, c: 1 },
+      { a: 7666, b: 7665 },
+      { a: 1700, b: 3300, c: 5000 },
+      { a: 9999 },
+    ];
+    for (const set of sets) {
+      expect(sum(percentagesFromShares(set))).toBe(100);
+    }
+  });
+
+  it('returns all-zero for an all-zero set', () => {
+    expect(percentagesFromShares({ a: 0, b: 0 })).toEqual({ a: 0, b: 0 });
+  });
+});
+
+describe('shareCountsFromShares', () => {
+  it('reduces clean ratios to small integers', () => {
+    expect(shareCountsFromShares({ a: 5000, b: 2500, c: 2500 })).toEqual({
+      a: 2,
+      b: 1,
+      c: 1,
+    });
+    expect(shareCountsFromShares({ a: 2000, b: 3000, c: 5000 })).toEqual({
+      a: 2,
+      b: 3,
+      c: 5,
+    });
+  });
+
+  it('collapses remainder-cent noise to equal shares', () => {
+    expect(shareCountsFromShares({ a: 3334, b: 3333, c: 3333 })).toEqual({
+      a: 1,
+      b: 1,
+      c: 1,
+    });
+  });
+
+  it('keeps zero-share participants at zero', () => {
+    expect(shareCountsFromShares({ a: 5000, b: 5000, c: 0 })).toEqual({
+      a: 1,
+      b: 1,
+      c: 0,
+    });
+  });
+
+  it('falls back to one each when every share is zero', () => {
+    expect(shareCountsFromShares({ a: 0, b: 0 })).toEqual({ a: 1, b: 1 });
+  });
+
+  it('returns an empty map for no participants', () => {
+    expect(shareCountsFromShares({})).toEqual({});
   });
 });
