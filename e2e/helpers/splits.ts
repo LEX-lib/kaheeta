@@ -241,6 +241,16 @@ export async function mockSplitsApi(
       return json(route, 200, { ok: true });
     }
     if (method === "PATCH") {
+      const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
+      const group = groups.find((g) => g.id === id);
+      if (group) {
+        if (typeof body.simplify_debts === "boolean") {
+          group.simplify_debts = body.simplify_debts;
+        }
+        if (typeof body.name === "string") group.name = body.name;
+        if (body.archived === true) group.archived_at = "2026-06-30 00:00:00.000Z";
+        if (body.archived === false) group.archived_at = "";
+      }
       return json(route, 200, { ok: true });
     }
     return route.fallback();

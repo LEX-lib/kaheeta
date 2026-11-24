@@ -27,20 +27,25 @@ test.describe("Split group detail — viewport parity", () => {
     await mockSplitsApi(page);
   });
 
-  test("desktop renders the detail as a Dialog (not a Drawer)", async ({ page }) => {
+  test("desktop renders the group as an inline two-pane (no modal)", async ({ page }) => {
     // default chromium viewport is desktop-width
     await openTrip(page);
 
-    await expect(page.locator(".p-dialog", { hasText: "Members" })).toBeVisible();
+    await expect(page.locator(".groups-layout")).toBeVisible();
+    await expect(page.locator(".groups-rail")).toBeVisible();
+    await expect(page.locator(".groups-detail")).toBeVisible();
+    await expect(page.locator(".p-dialog")).toHaveCount(0);
     await expect(page.locator(".p-drawer")).toHaveCount(0);
   });
 
-  test("desktop shows Download records and it triggers a JSON download", async ({ page }) => {
+  test("desktop JSON backup downloads from the group menu", async ({ page }) => {
     await openTrip(page);
-    const btn = page.getByRole("button", { name: "Download records" });
-    await expect(btn).toBeVisible();
+    await page.getByRole("button", { name: "Group actions" }).click();
 
-    const [download] = await Promise.all([page.waitForEvent("download"), btn.click()]);
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("menuitem", { name: "Download JSON" }).click(),
+    ]);
     expect(download.suggestedFilename()).toContain("kaheeta-trip");
     expect(download.suggestedFilename()).toMatch(/\.json$/);
   });
@@ -82,19 +87,27 @@ test.describe("Split group detail — viewport parity", () => {
   test.describe("mobile", () => {
     test.use({ viewport: { width: 390, height: 800 } });
 
-    test("renders the detail as a bottom Drawer (not a Dialog)", async ({ page }) => {
+    test("drills down from the rail into the inline detail (no Drawer)", async ({ page }) => {
       await openTrip(page);
 
-      const drawer = page.locator(".p-drawer", { hasText: "Members" });
-      await expect(drawer).toBeVisible();
-      await expect(page.locator(".p-drawer-bottom")).toBeVisible();
+      await expect(page.locator(".groups-detail")).toBeVisible();
+      await expect(page.locator(".groups-rail")).toBeHidden();
+      await expect(page.locator(".p-drawer")).toHaveCount(0);
       await expect(page.locator(".p-dialog")).toHaveCount(0);
+
+      // Back returns to the group rail.
+      await page.getByRole("button", { name: "Back to groups" }).click();
+      await expect(page.locator(".groups-rail")).toBeVisible();
+      await expect(page.locator(".groups-detail")).toBeHidden();
     });
 
-    test("Download records is hidden on mobile, CSV is available", async ({ page }) => {
+    test("CSV is available on mobile, the JSON backup is not", async ({ page }) => {
       await openTrip(page);
-      await expect(page.getByRole("button", { name: "Download records" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+
+      await page.getByRole("button", { name: "Group actions" }).click();
+      await expect(page.getByRole("menuitem", { name: "Download JSON" })).toHaveCount(0);
+      await expect(page.getByRole("menuitem", { name: "Delete group" })).toBeVisible();
     });
 
     test("add-expense inputs are ≥16px (iOS no-zoom)", async ({ page }) => {

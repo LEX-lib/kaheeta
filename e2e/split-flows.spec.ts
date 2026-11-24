@@ -12,9 +12,6 @@ async function rowAction(
   scope: import("@playwright/test").Locator,
   action: "edit" | "delete",
 ): Promise<void> {
-  // Wait for the async member load to settle — a late members refresh re-renders
-  // the rows while the test is interacting with them.
-  await page.getByText("Bob", { exact: true }).first().waitFor({ state: "visible" });
   await scope.locator(".sx-main").click();
   const label = action === "edit" ? "Edit" : "Delete";
   await scope.getByRole("button", { name: label, exact: true }).click();
@@ -64,7 +61,7 @@ test.describe("Split flows", () => {
     await expect(page.getByText("You owe Bob")).toBeVisible();
 
     // Open the settle dialog from that balance row.
-    await page.getByRole("button", { name: "Settle" }).click();
+    await page.getByRole("button", { name: "Settle", exact: true }).click();
     await expect(page.getByText(/You are paying/)).toBeVisible();
 
     // Record the (full, prefilled) settlement.
@@ -72,7 +69,7 @@ test.describe("Split flows", () => {
 
     // Balance nets to zero → row gone, settled-up message shown.
     await expect(page.getByText("You owe Bob")).toBeHidden();
-    await expect(page.getByText(/All settled up/)).toBeVisible();
+    await expect(page.getByText(/all settled up/i)).toBeVisible();
   });
 
   test("editing an expense updates the feed (Section K)", async ({ page }) => {
@@ -134,7 +131,7 @@ test.describe("Split flows", () => {
 
     // Owner flips Simplify → current user nets to zero, balances collapse.
     await page.getByRole("switch").click();
-    await expect(page.getByText(/All settled up/)).toBeVisible();
+    await expect(page.getByText(/all settled up/i)).toBeVisible();
     await expect(page.getByText("Bob owes you")).toBeHidden();
   });
 
@@ -158,9 +155,9 @@ test.describe("Split flows", () => {
     ]);
     await expect(sw).toBeChecked();
 
-    // Close the detail, then reopen the same group.
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("switch")).toHaveCount(0);
+    // Reload the page and reopen the same group.
+    await page.reload();
+    await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
 
     // Toggle reflects the persisted state, not the stale default.
@@ -174,6 +171,8 @@ test.describe("Split flows", () => {
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
     await expect(page.getByText("Members", { exact: true })).toBeVisible();
+    // Members live in the collapsible panel.
+    await page.getByRole("button", { name: "Add members" }).click();
 
     await expect(page.getByText("Bob", { exact: true })).toBeVisible();
     await expect(page.getByText("Carol", { exact: true })).toBeVisible();
@@ -219,6 +218,7 @@ test.describe("Split flows", () => {
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
 
+    await page.getByRole("button", { name: "Add members" }).click();
     await expect(page.getByText("Frequent", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Dave" }).click();
 
@@ -234,8 +234,9 @@ test.describe("Split flows", () => {
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
 
-    // Owner sees Delete group; click it and confirm.
-    await page.getByRole("button", { name: "Delete group" }).click();
+    // Owner sees Delete group in the header menu; click it and confirm.
+    await page.getByRole("button", { name: "Group actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete group" }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).click();
 
     // Detail closes, list refreshes to the empty state, the card is gone.
@@ -441,7 +442,6 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // e2e_user is a member, not the adder or the owner: both actions show.
-    await page.getByText("Bob", { exact: true }).first().waitFor({ state: "visible" });
     await page.locator(".sx-main").click();
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeVisible();
