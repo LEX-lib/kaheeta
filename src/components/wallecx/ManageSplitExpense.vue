@@ -29,6 +29,9 @@ const props = defineProps<{
 }>()
 
 const isEditMode = computed(() => !!props.expense)
+// Settlements are edited through a dedicated single-counterparty mode: keep
+// their split_type so balances/feed continue to treat them as settlements.
+const isSettlement = computed(() => props.expense?.split_type === 'settlement')
 
 const visible = defineModel('visible', { type: Boolean, default: false, required: true })
 
@@ -61,6 +64,8 @@ const expenseDate = ref<Date>(new Date())
 const paidBy = ref('')
 const splitType = ref<FormSplitType>('equal')
 const selectedParticipants = ref<string[]>([])
+// Settlement mode: the single counterparty the debtor paid (users id).
+const settlementTo = ref('')
 // Per-type, per-user inputs (keyed by user id).
 const exactAmounts = ref<Record<string, number | null>>({}) // major units
 const percentages = ref<Record<string, number | null>>({})
@@ -150,6 +155,11 @@ const memberOptions = computed(() =>
   props.members.map((m) => ({ label: memberLabel(m), value: m.user })),
 )
 
+// Settlement counterparty: every member except the debtor who paid.
+const counterpartyOptions = computed(() =>
+  memberOptions.value.filter((o) => o.value !== paidBy.value),
+)
+
 const amountCents = computed(() => Math.round((amount.value ?? 0) * 100))
 
 // Resolved per-participant amounts in cents, by split type. Always keyed by the
@@ -189,6 +199,7 @@ interface FormSnapshot {
   splitType: FormSplitType
   notes: string
   paymentMode: string
+  settlementTo: string
 }
 
 const snapshot = ref<FormSnapshot | null>(null)
@@ -204,6 +215,7 @@ const isDirty = computed(() => {
     splitType.value !== s.splitType ||
     notes.value !== s.notes ||
     paymentMode.value !== s.paymentMode ||
+    settlementTo.value !== s.settlementTo ||
     (splitSnapshot.value !== null && splitSignature() !== splitSnapshot.value) ||
     pendingFile.value !== null ||
     removeExistingReceipt.value
@@ -301,6 +313,7 @@ watch(visible, (isOpen) => {
     notes.value = ex.notes ?? ''
     paymentMode.value = ex.payment_mode ?? ''
     selectedParticipants.value = exShares.map((s) => s.user)
+    settlementTo.value = isSettlement.value ? (exShares[0]?.user ?? '') : ''
     const storedCents = centsByUser(exShares)
     if (splitType.value === 'exact') {
       const exact: Record<string, number | null> = {}
@@ -320,6 +333,7 @@ watch(visible, (isOpen) => {
       splitType: splitType.value,
       notes: notes.value,
       paymentMode: paymentMode.value,
+      settlementTo: settlementTo.value,
     }
     return
   }
@@ -334,6 +348,7 @@ watch(visible, (isOpen) => {
   notes.value = ''
   paymentMode.value = ''
   selectedParticipants.value = props.members.map((m) => m.user)
+  settlementTo.value = ''
   splitSnapshot.value = null
   snapshot.value = {
     description: '',
@@ -343,6 +358,7 @@ watch(visible, (isOpen) => {
     splitType: splitType.value,
     notes: '',
     paymentMode: '',
+    settlementTo: '',
   }
 })
 
@@ -356,12 +372,56 @@ async function onSubmit(): Promise<void> {
     toast.error('Enter an amount greater than zero.')
     return
   }
-  if (selectedParticipants.value.length === 0) {
-    toast.error('Select at least one participant.')
-    return
-  }
   if (!paidBy.value) {
     toast.error('Choose who paid.')
+    return
+  }
+
+  // Settlement mode: one counterparty receives the whole amount. The stored
+  // split_type is preserved so the row remains a settlement.
+  if (isSettlement.value) {
+    if (!settlementTo.value) {
+      toast.error('Choose who the settlement was paid to.')
+      return
+    }
+    if (settlementTo.value === paidBy.value) {
+      toast.error('The payer and the recipient must be different people.')
+      return
+    }
+    const settlementPayload = {
+      group: props.group.id,
+      name,
+      amount: amountCents.value,
+      currency: currency.value,
+      split_type: 'settlement' as SplitType,
+      expense_date: dayjs(expenseDate.value).format('YYYY-MM-DD'),
+      paid_by: paidBy.value,
+      notes: notes.value.trim() || undefined,
+      payment_mode: (paymentMode.value || undefined) as PaymentMode | undefined,
+      shares: [{ user: settlementTo.value, amount: amountCents.value }],
+    }
+    isSaving.value = true
+    try {
+      await updateSplitExpense(props.expense!.id, settlementPayload, {
+        receipt: pendingFile.value,
+        removeReceipt: removeExistingReceipt.value,
+      })
+      toast.success('Settlement updated.')
+      pendingFile.value = null
+      removeExistingReceipt.value = false
+      emit('saved')
+      baseDialogRef.value?.closeWithoutGuard()
+    } catch (e: unknown) {
+      toast.error('Failed to update settlement. Please try again.')
+      console.error('ManageSplitExpense: settlement update failed', e)
+    } finally {
+      isSaving.value = false
+    }
+    return
+  }
+
+  if (selectedParticipants.value.length === 0) {
+    toast.error('Select at least one participant.')
     return
   }
 
@@ -444,7 +504,7 @@ function onCancel(): void {
   <BaseMobileDialog
     ref="baseDialogRef"
     v-model:visible="visible"
-    :title="isEditMode ? 'Edit expense' : 'Add expense'"
+    :title="isSettlement ? 'Edit settlement' : isEditMode ? 'Edit expense' : 'Add expense'"
     :is-dirty="isDirty"
     :is-saving="isSaving"
   >
@@ -557,7 +617,8 @@ function onCancel(): void {
         />
       </div>
 
-      <!-- Split method -->
+      <!-- Split method (shared expenses only) -->
+      <template v-if="!isSettlement">
       <div class="flex flex-col gap-1">
         <label class="text-sm" style="color: var(--color-typo-heading)">Split</label>
         <SelectButton
@@ -658,6 +719,24 @@ function onCancel(): void {
           <template v-else>
             {{ shareTotal }} share{{ shareTotal === 1 ? '' : 's' }}
           </template>
+        </small>
+      </div>
+      </template>
+
+      <!-- Settlement: the debtor paid a single counterparty -->
+      <div v-else class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">Paid to *</label>
+        <Select
+          v-model="settlementTo"
+          fluid
+          option-label="label"
+          option-value="value"
+          :options="counterpartyOptions"
+          :disabled="isSaving"
+          placeholder="Who received the payment?"
+        />
+        <small style="color: var(--color-typo-muted)">
+          Recorded as a settlement between the payer and this member.
         </small>
       </div>
 

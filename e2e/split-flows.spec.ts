@@ -431,4 +431,43 @@ test.describe("Split flows", () => {
     await expect(page.getByText("Bob's lunch", { exact: true })).toBeVisible();
   });
 
+  test("a settlement is editable through settlement mode (SPL-K-11)", async ({ page }) => {
+    await mockSplitsApi(page, {
+      expenses: [
+        {
+          id: "st1",
+          group: "g1",
+          paid_by: "e2e_user",
+          added_by: "e2e_user",
+          name: "Settlement",
+          amount: 5000,
+          currency: "PHP",
+          split_type: "settlement",
+          expense_date: "2026-06-01",
+        },
+      ],
+      shares: [{ id: "sh_a", expense: "st1", user: "u_bob", amount: 5000 }],
+    });
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    await page.getByRole("button", { name: "Edit expense" }).click();
+    await expect(page.getByText("Edit settlement")).toBeVisible();
+
+    const form = page.locator("#manage-split-expense-form");
+    await form.getByRole("spinbutton").first().fill("70");
+
+    const [req] = await Promise.all([
+      page.waitForRequest(
+        (r) => r.method() === "PATCH" && r.url().includes("/api/kaheeta/split-expenses/"),
+      ),
+      page.locator('button[form="manage-split-expense-form"]').click(),
+    ]);
+    const body = JSON.parse(req.postData() ?? "{}");
+    expect(body.split_type).toBe("settlement");
+    expect(body.amount).toBe(7000);
+    expect(body.shares).toEqual([{ user: "u_bob", amount: 7000 }]);
+  });
 });
