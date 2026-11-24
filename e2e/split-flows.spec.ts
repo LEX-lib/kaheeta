@@ -12,7 +12,7 @@ async function rowAction(
   scope: import("@playwright/test").Locator,
   item: "Edit expense" | "Edit settlement" | "Delete",
 ): Promise<void> {
-  await expect(page.locator(".gd-members .p-panel-header .p-tag")).not.toHaveText("0");
+  await expect(page.locator(".gd-avatars .p-avatar").first()).toBeVisible();
   await scope.getByRole("button", { name: "Expense actions" }).click();
   await page.getByRole("menuitem", { name: item }).click();
 }
@@ -172,9 +172,9 @@ test.describe("Split flows", () => {
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
-    await expect(page.getByText("Members", { exact: true })).toBeVisible();
-    // Members live in the collapsible panel.
+    // Members live in the Add members modal.
     await page.getByRole("button", { name: "Add members" }).click();
+    await expect(page.locator(".p-dialog-title", { hasText: "Members" })).toBeVisible();
 
     await expect(page.getByText("Bob", { exact: true })).toBeVisible();
     await expect(page.getByText("Carol", { exact: true })).toBeVisible();
@@ -444,7 +444,7 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // e2e_user is a member, not the adder or the owner: both actions show.
-    await expect(page.locator(".gd-members .p-panel-header .p-tag")).not.toHaveText("0");
+    await expect(page.locator(".gd-avatars .p-avatar").first()).toBeVisible();
     await page.getByRole("button", { name: "Expense actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Edit expense" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
@@ -496,7 +496,7 @@ test.describe("Split flows", () => {
     expect(body.shares).toEqual([{ user: "u_bob", amount: 7000 }]);
   });
 
-  test("rows show my share, 'not included', and the Only you tag (SPL-K-12)", async ({ page }) => {
+  test("rows show the payer, 'not included', and the Only you tag (SPL-K-12)", async ({ page }) => {
     await mockSplitsApi(page, {
       expenses: [
         {
@@ -548,7 +548,7 @@ test.describe("Split flows", () => {
 
     const row = (name: string) => page.locator(".sx-wrap", { hasText: name });
     await expect(row("Solo coffee").getByText("Only you", { exact: true })).toBeVisible();
-    await expect(row("Shared lunch").getByText(/your share/)).toBeVisible();
+    await expect(row("Shared lunch").getByText(/Bob paid/)).toBeVisible();
     await expect(row("Others only").getByText(/not included/)).toBeVisible();
 
     // Expanding shows the per-member breakdown.

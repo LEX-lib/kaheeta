@@ -17,8 +17,8 @@ test.describe("Split group detail — viewport parity", () => {
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
-    // Detail content is loaded once the Members heading is present.
-    await expect(page.getByText("Members", { exact: true })).toBeVisible();
+    // Detail content is loaded once the action toolbar is present.
+    await expect(page.getByRole("button", { name: "Add expense" })).toBeVisible();
   }
 
   test.beforeEach(async ({ page }) => {

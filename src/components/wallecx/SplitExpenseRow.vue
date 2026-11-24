@@ -39,7 +39,6 @@ const payerName = computed(() =>
 const myShare = computed(
   () => props.shares.find((s) => s.user === props.currentUserId) ?? null,
 )
-const myShareCents = computed(() => myShare.value?.amount ?? 0)
 
 // "Only me" is an expense whose split list is exactly one participant. Show it
 // to everyone (the other members need to know why they are not involved).
@@ -141,11 +140,7 @@ function toggleMenu(event: Event): void {
             <span v-else class="sx-meta-payer">
               {{ payerName }} paid {{ formatCents(expense.amount, expense.currency) }}
             </span>
-            <span v-if="!isSettlement && myShare" class="sx-meta-share">
-              <span class="sx-meta-dot">· </span>your share
-              {{ formatCents(myShareCents, expense.currency) }}
-            </span>
-            <span v-else-if="!isSettlement && shares.length > 0" class="sx-meta-share">
+            <span v-if="!isSettlement && !myShare && shares.length > 0" class="sx-meta-share">
               <span class="sx-meta-dot">· </span>not included
             </span>
           </span>
@@ -163,17 +158,6 @@ function toggleMenu(event: Event): void {
       </button>
 
       <div class="sx-actions">
-        <Button
-          v-if="expense.receipt"
-          text
-          rounded
-          size="small"
-          severity="secondary"
-          aria-label="View receipt"
-          @click="emit('preview', expense)"
-        >
-          <iconify-icon icon="mdi:paperclip" width="18" height="18"></iconify-icon>
-        </Button>
         <Button
           text
           rounded

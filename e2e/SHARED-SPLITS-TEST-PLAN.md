@@ -31,7 +31,7 @@ Legend: ☐ to do · ✅ pass · ❌ fail (note the ID + actual result)
 
 Frontend entry: log in → **My Wallet** → **Groups** tab (`mdi:account-group`).
 The tab is a two-pane surface: group rail on the left, the selected group
-(header, net position, actions, month-grouped feed, collapsible Members panel)
+(header, net position, actions, month-grouped feed, Members modal)
 on the right. Mobile drills down into the detail with a **Back to groups** button.
 
 ---
@@ -46,8 +46,8 @@ Run as **A** unless noted.
 | SPL-G-2 | **New group** → name "Trip", currency `USD` → Create | Group card appears; subtitle shows `USD · Owner` | ☐ |
 | SPL-G-3 | Open the group → **Copy** the join code | Toast "Join code copied."; code is a 15-char string | ☐ |
 | SPL-G-4 | As **B** (separate session): Groups → **Join group** → paste A's code → Join | Toast `Joined "Trip"`; the group appears in B's list (no "Owner" tag) | ☐ |
-| SPL-G-5 | A opens the group → Members | Both A and B listed; A tagged `· owner` | ☐ |
-| SPL-G-6 | B opens the group → Members | Same two members visible to B | ☐ |
+| SPL-G-5 | A opens the group → **Add members** | Members modal lists both A and B; A tagged `Owner` | ☐ |
+| SPL-G-6 | B opens the group | The same members are visible in the header avatar stack (the Add members button is owner-only) | ☐ |
 | SPL-G-7 | A (owner) → **Add by email** → C's email → Add | Toast "Member added."; C appears in the member list | ☐ |
 | SPL-G-8 | A → Add by email → a non-existent email | Toast "Could not add member — they may not have a Kaheeta account." | ☐ |
 | SPL-G-9 | B (non-owner) opens detail | No "Add by email" field; shows **Leave group**, not Delete | ☐ |
@@ -204,7 +204,7 @@ You 50, You owe Carol 50 (you net zero).
 | SPL-K-8 | Stored **Percent** 50/25/25 and **Shares** 2/1/1 | Editor opens in Percent with 50/25/25 and in Shares with 2/1/1 | ☐ |
 | SPL-K-9 | Notes-only edit of a stored split | The saved shares are byte-for-byte unchanged (no cent drift) | ☐ |
 | SPL-K-10 | Add an expense with only yourself in **Split between** | Row shows an **Only you** Tag; expand shows your single share | ☐ |
-| SPL-K-11 | Rows for a shared expense | Summary shows the payer and **your share**; a non-participant row shows **not included**; expanding lists every member's share | ☐ |
+| SPL-K-11 | Rows for a shared expense | Summary shows who paid; a non-participant row shows **not included**; expanding lists every member's share (including yours) | ☐ |
 
 ## L. Multi-currency
 
@@ -242,8 +242,8 @@ You 50, You owe Carol 50 (you net zero).
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
 | SPL-O-1 | Add an expense with a **payment mode** and **notes** | The row shows the payment-mode Tag; expanding it shows the notes; the group JSON export includes `payment_mode` + `notes` | ☐ |
-| SPL-O-2 | Attach a **receipt** (photo + PDF) and save, then reopen the expense | Paperclip appears in the feed; another **group member** opens the preview successfully; a non-member gets no file access | ☐ |
-| SPL-O-3 | Edit the expense: replace the receipt; then use **Remove current receipt** and save | New file replaces the old; removal clears the field and the paperclip disappears | ☐ |
+| SPL-O-2 | Attach a **receipt** (photo + PDF) and save, then reopen the expense | The row’s ⋮ menu offers **View receipt**; another **group member** opens the preview successfully; a non-member gets no file access | ☐ |
+| SPL-O-3 | Edit the expense: replace the receipt; then use **Remove current receipt** and save | New file replaces the old; removal clears the field and View receipt disappears from the row menu | ☐ |
 | SPL-O-4 | As the owner, open a group you own after previously adding people to another group | A **Frequent** chip row lists those people (most shared groups first) and omits current members + yourself | ☐ |
 | SPL-O-5 | Tap a Frequent chip | Member is added immediately (no email typed) and disappears from the suggestions | ☐ |
 | SPL-O-6 | Non-owner requests `GET /api/kaheeta/groups/{id}/suggested-members` | **403** — only the owner can add/look up suggestions | ☐ |

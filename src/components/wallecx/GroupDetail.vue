@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { instrumentedGetFullList } from '@/lib/pocketbase/perfInstrument'
@@ -69,7 +69,7 @@ const simplifyOn = ref(props.group.simplify_debts)
 const isSavingSimplify = ref(false)
 const isExporting = ref(false)
 const isExportingCsv = ref(false)
-const membersCollapsed = ref(true)
+const showMembers = ref(false)
 
 // Receipt preview mirrors the Expenses tab: token required for protected files.
 const isMobile = useIsMobile(767)
@@ -105,15 +105,6 @@ const headerMenuItems = computed(() => {
 
 function toggleHeaderMenu(event: Event): void {
   headerMenuRef.value?.toggle(event)
-}
-
-async function openMembers(): Promise<void> {
-  membersCollapsed.value = false
-  await nextTick()
-  document.getElementById('group-members-panel')?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'nearest',
-  })
 }
 
 function memberLabel(m: GroupMember): string {
@@ -626,7 +617,7 @@ async function doDeleteGroup(): Promise<void> {
             icon="pi pi-user-plus"
             size="small"
             severity="secondary"
-            @click="openMembers"
+            @click="showMembers = true"
           />
         </div>
       </template>
@@ -675,19 +666,19 @@ async function doDeleteGroup(): Promise<void> {
       </template>
     </div>
 
-    <!-- Members / join code / add people -->
-    <Panel
-      id="group-members-panel"
-      v-model:collapsed="membersCollapsed"
-      toggleable
-      class="gd-members"
+    <!-- Members / join code / add people (modal, opened from Add members) -->
+    <BaseMobileDialog
+      v-model:visible="showMembers"
+      title="Members"
+      :is-dirty="false"
+      :is-saving="false"
     >
-      <template #header>
-        <div class="flex items-center gap-2">
-          <span class="font-medium">Members</span>
-          <Tag :value="String(members.length)" severity="secondary" />
-        </div>
-      </template>
+      <div class="flex items-center gap-2">
+        <Tag
+          :value="`${members.length} member${members.length === 1 ? '' : 's'}`"
+          severity="secondary"
+        />
+      </div>
 
       <div v-if="membersLoading" class="gd-muted">Loading…</div>
       <ul v-else class="gd-member-list">
@@ -746,7 +737,11 @@ async function doDeleteGroup(): Promise<void> {
           />
         </form>
       </template>
-    </Panel>
+
+      <template #actions>
+        <Button label="Done" fluid @click="showMembers = false" />
+      </template>
+    </BaseMobileDialog>
 
     <!-- Add / edit expense dialog -->
     <ManageSplitExpense
@@ -911,9 +906,6 @@ async function doDeleteGroup(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-}
-.gd-members {
-  margin-top: 0.25rem;
 }
 .gd-member-list {
   list-style: none;
