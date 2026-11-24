@@ -4,11 +4,11 @@ import { seedAuth, stubPocketBase } from "./helpers/pwa";
 import { mockSplitsApi } from "./helpers/splits";
 
 /**
- * Section F — mobile / desktop parity for the group-detail surface. GroupsTab
- * renders the detail as a centered PrimeVue Dialog on desktop and a bottom
- * Drawer on mobile (useIsMobile, 639px breakpoint). The add-expense form
- * (BaseMobileDialog) follows the same split. We assert the right shell renders
- * per viewport and that form inputs are ≥16px on mobile (iOS no-zoom rule).
+ * Section F — mobile / desktop parity for the group surface. GroupsTab renders
+ * a two-pane rail + inline detail on desktop and a drill-down on mobile
+ * (useIsMobile, 767px breakpoint) — no Dialog/Drawer for the group itself. The
+ * add-expense form (BaseMobileDialog) still follows the mobile-dialog split, so
+ * we also assert ≥16px inputs there (iOS no-zoom rule).
  */
 test.describe("Split group detail — viewport parity", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "Chromium only");
