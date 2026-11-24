@@ -12,8 +12,6 @@ const props = defineProps<{
   members: GroupMember[]
   /** Every outstanding balance involving the current user. */
   balances: BalanceSummary[]
-  /** Preselected balance (from a balance row); omit for the header button. */
-  initial?: BalanceSummary | null
   currentUserId: string
 }>()
 
@@ -84,12 +82,7 @@ watch(
       isSaving.value = false
       return
     }
-    const initial = props.initial
-    selectedKey.value = initial
-      ? balanceKey(initial)
-      : props.balances[0]
-        ? balanceKey(props.balances[0])
-        : ''
+    selectedKey.value = props.balances[0] ? balanceKey(props.balances[0]) : ''
     syncAmount()
   },
   { immediate: true },

@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import dayjs from 'dayjs'
 import { formatCents } from '@/lib/wallecx/splitFormat'
 import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
-import { useIsMobile } from '@/composables/useIsMobile'
 import type { GroupMember, SplitExpense, SplitShare } from '@/types/wallecx/splits/types'
 
 const props = defineProps<{
@@ -22,7 +21,6 @@ const emit = defineEmits<{
   preview: [expense: SplitExpense]
 }>()
 
-const isNarrow = useIsMobile(767)
 const expanded = ref(false)
 const menuRef = ref<{ toggle: (event: Event) => void } | null>(null)
 
@@ -210,28 +208,6 @@ function toggleMenu(event: Event): void {
         </li>
       </ul>
       <p v-if="expense.notes" class="sx-notes">{{ expense.notes }}</p>
-      <div class="sx-detail-actions">
-        <Button
-          v-if="canEdit"
-          label="Edit"
-          icon="pi pi-pencil"
-          size="small"
-          severity="secondary"
-          outlined
-          :fluid="isNarrow"
-          @click="emit('edit', expense)"
-        />
-        <Button
-          v-if="canDelete"
-          label="Delete"
-          icon="pi pi-trash"
-          size="small"
-          severity="danger"
-          text
-          :fluid="isNarrow"
-          @click="emit('delete', expense)"
-        />
-      </div>
     </div>
   </div>
 </template>
@@ -373,13 +349,6 @@ function toggleMenu(event: Event): void {
   color: var(--color-typo-muted);
   white-space: pre-wrap;
 }
-.sx-detail-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.6rem;
-}
-
 /* Phones: give the text the space the avatar used to take, let the meta wrap
  * instead of truncating, and keep the amount/actions compact. */
 @media (max-width: 639px) {

@@ -25,7 +25,6 @@ import type {
   GroupMember,
   SplitExpense,
   SplitShare,
-  BalanceSummary,
 } from '@/types/wallecx/splits/types'
 import type { SuggestedMember } from '@/lib/pocketbase/splitsApi'
 import ManageSplitExpense from './ManageSplitExpense.vue'
@@ -66,7 +65,6 @@ const showManage = ref(false)
 const editingExpense = ref<SplitExpense | null>(null)
 const manageToken = ref('')
 const showSettle = ref(false)
-const settleInitial = ref<BalanceSummary | null>(null)
 const simplifyOn = ref(props.group.simplify_debts)
 const isSavingSimplify = ref(false)
 const isExporting = ref(false)
@@ -407,18 +405,11 @@ async function onExpenseSaved(): Promise<void> {
 }
 
 function openSettle(): void {
-  settleInitial.value = null
-  showSettle.value = true
-}
-
-function openSettleFor(balance: BalanceSummary): void {
-  settleInitial.value = balance
   showSettle.value = true
 }
 
 async function onSettleSaved(): Promise<void> {
   showSettle.value = false
-  settleInitial.value = null
   await loadLedger()
 }
 
@@ -611,7 +602,6 @@ async function doDeleteGroup(): Promise<void> {
             >
               {{ formatCents(Math.abs(b.amount), b.currency) }}
             </span>
-            <Button label="Settle" text size="small" @click="openSettleFor(b)" />
           </li>
         </ul>
       </template>
@@ -815,7 +805,6 @@ async function doDeleteGroup(): Promise<void> {
       :group="group"
       :members="members"
       :balances="balances"
-      :initial="settleInitial"
       :current-user-id="currentUserId"
       @saved="onSettleSaved"
     />

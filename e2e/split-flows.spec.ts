@@ -3,18 +3,18 @@ import { seedAuth, stubPocketBase } from "./helpers/pwa";
 import { mockSplitsApi } from "./helpers/splits";
 
 /**
- * Expand a row (inline breakdown) and trigger its stable Edit/Delete button.
- * The popup action menu is exercised by the viewport/parity suite instead —
- * clicking a teleported overlay is prone to animation detaches.
+ * Open a row's PrimeVue actions menu and trigger an item. Wait for the async
+ * member load first: a late members refresh re-renders the rows (and closes
+ * the teleported menu) while it is open.
  */
 async function rowAction(
   page: import("@playwright/test").Page,
   scope: import("@playwright/test").Locator,
-  action: "edit" | "delete",
+  item: "Edit expense" | "Edit settlement" | "Delete",
 ): Promise<void> {
-  await scope.locator(".sx-main").click();
-  const label = action === "edit" ? "Edit" : "Delete";
-  await scope.getByRole("button", { name: label, exact: true }).click();
+  await expect(page.locator(".gd-members .p-panel-header .p-tag")).not.toHaveText("0");
+  await scope.getByRole("button", { name: "Expense actions" }).click();
+  await page.getByRole("menuitem", { name: item }).click();
 }
 
 /**
@@ -61,8 +61,8 @@ test.describe("Split flows", () => {
     const net = page.locator(".gd-net");
     await expect(net.getByText("You owe Bob")).toBeVisible();
 
-    // Open the settle dialog from that balance row.
-    await page.getByRole("button", { name: "Settle", exact: true }).click();
+    // Open the settle dialog from the toolbar button.
+    await page.getByRole("button", { name: "Settle up" }).click();
     await expect(page.getByText(/You are paying/)).toBeVisible();
 
     // Record the (full, prefilled) settlement.
@@ -100,8 +100,8 @@ test.describe("Split flows", () => {
     await expect(page.getByText("Dinner", { exact: true })).toBeVisible();
 
     // Open edit, rename, save (shares prefill in Exact mode and already sum).
-    await rowAction(page, page, "edit");
-    await expect(page.getByText("Edit expense")).toBeVisible();
+    await rowAction(page, page, "Edit expense");
+    await expect(page.locator(".p-dialog-title", { hasText: "Edit expense" })).toBeVisible();
     await page.getByPlaceholder("e.g. Dinner").fill("Dinner v2");
     await page.locator('button[form="manage-split-expense-form"]').click();
 
@@ -273,7 +273,7 @@ test.describe("Split flows", () => {
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
-    await rowAction(page, page, "edit");
+    await rowAction(page, page, "Edit expense");
 
     const form = page.locator("#manage-split-expense-form");
     await expect(form).toBeVisible();
@@ -345,7 +345,7 @@ test.describe("Split flows", () => {
     const row = (name: string) => page.locator(".sx-wrap", { hasText: name });
 
     // Equal: the selector follows the stored method (no per-person inputs).
-    await rowAction(page, row("Evenly"), "edit");
+    await rowAction(page, row("Evenly"), "Edit expense");
     await expect(form.getByRole("button", { name: "Equally" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -353,7 +353,7 @@ test.describe("Split flows", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
 
     // Percent: 50/25/25 reconstructed from the stored cents.
-    await rowAction(page, row("Perc"), "edit");
+    await rowAction(page, row("Perc"), "Edit expense");
     await expect(form.getByRole("button", { name: "Percent" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -364,7 +364,7 @@ test.describe("Split flows", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
 
     // Shares: 2/1/1 recovered from the stored cents.
-    await rowAction(page, row("Weighted"), "edit");
+    await rowAction(page, row("Weighted"), "Edit expense");
     await expect(form.getByRole("button", { name: "Shares" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -399,7 +399,7 @@ test.describe("Split flows", () => {
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
-    await rowAction(page, page, "edit");
+    await rowAction(page, page, "Edit expense");
     await page.locator("textarea").fill("Receipt attached later");
 
     const [req] = await Promise.all([
@@ -444,12 +444,13 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // e2e_user is a member, not the adder or the owner: both actions show.
-    await page.locator(".sx-main").click();
-    await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeVisible();
+    await expect(page.locator(".gd-members .p-panel-header .p-tag")).not.toHaveText("0");
+    await page.getByRole("button", { name: "Expense actions" }).click();
+    await expect(page.getByRole("menuitem", { name: "Edit expense" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
 
     // And an edit actually persists through the member-scoped hook.
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Edit expense" }).click();
     await page.getByPlaceholder("e.g. Dinner").fill("Bob's lunch");
     await page.locator('button[form="manage-split-expense-form"]').click();
     await expect(page.getByText("Bob's lunch", { exact: true })).toBeVisible();
@@ -477,8 +478,8 @@ test.describe("Split flows", () => {
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
 
-    await rowAction(page, page, "edit");
-    await expect(page.getByText("Edit settlement")).toBeVisible();
+    await rowAction(page, page, "Edit settlement");
+    await expect(page.locator(".p-dialog-title", { hasText: "Edit settlement" })).toBeVisible();
 
     const form = page.locator("#manage-split-expense-form");
     await form.getByRole("spinbutton").first().fill("70");

@@ -151,7 +151,7 @@ Each row: add an expense with the given method, then check the shares persisted 
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-H-1 | With "B owes you $X": A opens the balance row → **Settle** | Dialog: "B is paying you", amount prefilled to $X | ☐ |
+| SPL-H-1 | With "B owes you $X": A taps the toolbar **Settle up** | Dialog lists the balance; pick it → "B is paying you", amount prefilled to $X | ☐ |
 | SPL-H-2 | Record settlement | Toast "Settlement recorded."; the B-owes-you balance row **disappears** (nets to 0) | ☐ |
 | SPL-H-3 | B's view after SPL-H-2 | B's "You owe A" balance is also cleared | ☐ |
 | SPL-H-4 | The feed | A `Settlement · settlement` row appears with the amount | ☐ |
@@ -162,7 +162,7 @@ Each row: add an expense with the given method, then check the shares persisted 
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-D-1 | Expand a row (or open its ⋮ menu) → **Delete** → confirm | Confirmation names who added it; toast "Expense deleted."; row leaves the feed; balances recompute | ☐ |
+| SPL-D-1 | Open a row’s ⋮ menu → **Delete** → confirm | Confirmation names who added it; toast "Expense deleted."; row leaves the feed; balances recompute | ☐ |
 | SPL-D-2 | As a **member who is neither adder nor the owner**: delete an expense added by someone else | Allowed (membership-scoped) and balances recompute | ☐ |
 | SPL-D-3 | As a **non-member** (D): `DELETE /api/kaheeta/split-expenses/{id}` via curl | **403** "Only members of this group can delete its expenses." | ☐ |
 | SPL-D-4 | After delete, inspect the row | `deleted_at` is set (soft delete); the row still exists but is excluded from reads/balances | ☐ |
@@ -194,12 +194,12 @@ You 50, You owe Carol 50 (you net zero).
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-K-1 | Expand a row → **Edit** (or the ⋮ menu) | The selector matches the stored split method (Equally / Exact / Percent / Shares) with reconstructed per-person inputs; amount/date/payer match | ☐ |
+| SPL-K-1 | Open a row’s ⋮ menu → **Edit expense** | The selector matches the stored split method (Equally / Exact / Percent / Shares) with reconstructed per-person inputs; amount/date/payer match | ☐ |
 | SPL-K-2 | Change the amount/shares and **Save changes** | Feed + balances update; shares still sum to the amount | ☐ |
 | SPL-K-3 | Rename and save | The new name shows in the feed | ☐ |
 | SPL-K-4 | As any **member** (non-owner, not the adder) | Edit and Delete are available; `PATCH /api/kaheeta/split-expenses/{id}` → **200**. A **non-member** gets **403** | ☐ |
 | SPL-K-5 | Edit with shares NOT summing to the amount (via curl) | **400** "Shares must sum to the expense amount."; row unchanged | ☐ |
-| SPL-K-6 | Settlement row → **Edit settlement** | Settlement mode: amount, currency, date, payer (debtor), one recipient, notes/payment mode/receipt editable; `split_type` stays `settlement` | ☐ |
+| SPL-K-6 | Settlement row’s ⋮ menu → **Edit settlement** | Settlement mode: amount, currency, date, payer (debtor), one recipient, notes/payment mode/receipt editable; `split_type` stays `settlement` | ☐ |
 | SPL-K-7 | Stored **Exact** split 60/30/10 → first open | Inputs show 60.00 / 30.00 / 10.00 (not an equal split); no close/reopen needed | ☐ |
 | SPL-K-8 | Stored **Percent** 50/25/25 and **Shares** 2/1/1 | Editor opens in Percent with 50/25/25 and in Shares with 2/1/1 | ☐ |
 | SPL-K-9 | Notes-only edit of a stored split | The saved shares are byte-for-byte unchanged (no cent drift) | ☐ |
