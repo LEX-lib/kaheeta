@@ -9,7 +9,6 @@ import { useConfirm } from 'primevue/useconfirm' // explicit — NOT auto-resolv
 import { computeBalances } from '@/lib/wallecx/balances'
 import { simplifyDebts } from '@/lib/wallecx/simplifyDebts'
 import { formatCents } from '@/lib/wallecx/splitFormat'
-import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
 import {
   leaveGroup,
   deleteGroup,
@@ -29,6 +28,7 @@ import type {
 } from '@/types/wallecx/splits/types'
 import type { SuggestedMember } from '@/lib/pocketbase/splitsApi'
 import ManageSplitExpense from './ManageSplitExpense.vue'
+import SplitExpenseRow from './SplitExpenseRow.vue'
 import SettleUpDialog from './SettleUpDialog.vue'
 import AttachmentPreview from './AttachmentPreview.vue'
 import DragHandle from './DragHandle.vue'
@@ -75,10 +75,6 @@ const previewToken = ref('')
 
 const isOwner = computed(() => props.group.created_by === props.currentUserId)
 
-function paymentModeLabel(value: string): string {
-  return PAYMENT_MODES.find((m) => m.value === value)?.label ?? value
-}
-
 function memberLabel(m: GroupMember): string {
   return m.expand?.user?.name || m.expand?.user?.email || 'Member'
 }
@@ -97,9 +93,19 @@ const balances = computed(() =>
 
 const sharesForEditing = computed(() =>
   editingExpense.value
-    ? shares.value.filter((s) => s.expense === editingExpense.value!.id)
+    ? sharesFor(editingExpense.value.id)
     : [],
 )
+
+// Shares belonging to one expense (the row renders its own breakdown).
+function sharesFor(expenseId: string): SplitShare[] {
+  return shares.value.filter((s) => s.expense === expenseId)
+}
+
+function addedByName(ex: SplitExpense): string {
+  if (ex.added_by === props.currentUserId) return 'you'
+  return nameForUser(ex.added_by)
+}
 
 // Export the group's ledger as JSON (desktop only — the trigger is hidden on
 // mobile). Mirrors ExpensesTab's "Download records". Uses the already-loaded
@@ -319,8 +325,8 @@ function canDeleteExpense(ex: SplitExpense): boolean {
 
 function confirmDeleteExpense(ex: SplitExpense): void {
   confirm.require({
-    header: 'Delete expense?',
-    message: `Delete "${ex.name}"? This removes it from the group's balances.`,
+    header: ex.split_type === 'settlement' ? 'Delete settlement?' : 'Delete expense?',
+    message: `Delete "${ex.name}"? Added by ${addedByName(ex)} — this changes everyone's balances.`,
     icon: 'pi pi-exclamation-triangle',
     rejectProps: { label: 'Keep', severity: 'secondary', outlined: true },
     acceptProps: { label: 'Delete', severity: 'danger' },
@@ -499,69 +505,21 @@ async function doDelete(): Promise<void> {
       <p v-else-if="expenses.length === 0" class="text-sm opacity-70">
         No expenses yet. Add the first one.
       </p>
-      <ul v-else class="flex flex-col gap-2">
-        <li
+      <div v-else class="flex flex-col gap-2">
+        <SplitExpenseRow
           v-for="ex in expenses"
           :key="ex.id"
-          class="flex items-center justify-between gap-2"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="truncate" style="color: var(--color-typo-heading)">
-              {{ ex.name }}
-              <span
-                v-if="ex.split_type === 'settlement'"
-                class="text-xs opacity-60 font-normal"
-              >· settlement</span>
-            </p>
-            <p class="text-xs opacity-70">
-              {{ ex.expense_date?.slice(0, 10) }} · paid by {{ nameForUser(ex.paid_by) }}
-              <span
-                v-if="ex.payment_mode"
-                class="inline-block ml-1 px-2 py-0.5 rounded-full align-baseline"
-                style="background: var(--color-surface-card-2); color: var(--color-typo-body)"
-              >
-                {{ paymentModeLabel(ex.payment_mode) }}
-              </span>
-            </p>
-            <p v-if="ex.notes" class="text-xs opacity-60 truncate">
-              {{ ex.notes }}
-            </p>
-          </div>
-          <span class="text-sm font-medium tabular-nums whitespace-nowrap">
-            {{ formatCents(ex.amount, ex.currency) }}
-          </span>
-          <Button
-            v-if="ex.receipt"
-            icon="pi pi-paperclip"
-            size="small"
-            severity="secondary"
-            text
-            rounded
-            aria-label="View receipt"
-            @click.stop="openReceiptPreview(ex)"
-          />
-          <Button
-            v-if="canEditExpense(ex)"
-            icon="pi pi-pencil"
-            size="small"
-            severity="secondary"
-            text
-            rounded
-            aria-label="Edit expense"
-            @click="openEditExpense(ex)"
-          />
-          <Button
-            v-if="canDeleteExpense(ex)"
-            icon="pi pi-trash"
-            size="small"
-            severity="danger"
-            text
-            rounded
-            aria-label="Delete expense"
-            @click="confirmDeleteExpense(ex)"
-          />
-        </li>
-      </ul>
+          :expense="ex"
+          :shares="sharesFor(ex.id)"
+          :members="members"
+          :current-user-id="currentUserId"
+          :can-edit="canEditExpense(ex)"
+          :can-delete="canDeleteExpense(ex)"
+          @edit="openEditExpense"
+          @delete="confirmDeleteExpense"
+          @preview="openReceiptPreview"
+        />
+      </div>
     </div>
 
     <!-- Join code -->

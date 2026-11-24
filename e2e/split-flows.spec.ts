@@ -3,6 +3,24 @@ import { seedAuth, stubPocketBase } from "./helpers/pwa";
 import { mockSplitsApi } from "./helpers/splits";
 
 /**
+ * Expand a row (inline breakdown) and trigger its stable Edit/Delete button.
+ * The popup action menu is exercised by the viewport/parity suite instead —
+ * clicking a teleported overlay is prone to animation detaches.
+ */
+async function rowAction(
+  page: import("@playwright/test").Page,
+  scope: import("@playwright/test").Locator,
+  action: "edit" | "delete",
+): Promise<void> {
+  // Wait for the async member load to settle — a late members refresh re-renders
+  // the rows while the test is interacting with them.
+  await page.getByText("Bob", { exact: true }).first().waitFor({ state: "visible" });
+  await scope.locator(".sx-main").click();
+  const label = action === "edit" ? "Edit" : "Delete";
+  await scope.getByRole("button", { name: label, exact: true }).click();
+}
+
+/**
  * End-to-end flows that span a write + a re-read against the stateful split
  * mock: a settlement cancelling a balance (Section H) and an owner deleting a
  * group (Section F / SPL-U-4). These exercise the recompute / list-refresh that
@@ -84,7 +102,7 @@ test.describe("Split flows", () => {
     await expect(page.getByText("Dinner", { exact: true })).toBeVisible();
 
     // Open edit, rename, save (shares prefill in Exact mode and already sum).
-    await page.getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, page, "edit");
     await expect(page.getByText("Edit expense")).toBeVisible();
     await page.getByPlaceholder("e.g. Dinner").fill("Dinner v2");
     await page.locator('button[form="manage-split-expense-form"]').click();
@@ -186,6 +204,8 @@ test.describe("Split flows", () => {
     // The optimistic re-read reflects the stored metadata.
     await expect(page.getByText("Team lunch", { exact: true })).toBeVisible();
     await expect(page.getByText("Cash", { exact: true })).toBeVisible();
+    // Notes live in the row's inline breakdown.
+    await page.getByText("Team lunch", { exact: true }).click();
     await expect(page.getByText("Split with Bob and Carol")).toBeVisible();
     expect(posted).toHaveLength(1);
     expect(posted[0]!.payment_mode).toBe("cash");
@@ -250,7 +270,7 @@ test.describe("Split flows", () => {
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
-    await page.getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, page, "edit");
 
     const form = page.locator("#manage-split-expense-form");
     await expect(form).toBeVisible();
@@ -319,10 +339,10 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     const form = page.locator("#manage-split-expense-form");
-    const row = (name: string) => page.locator("li", { hasText: name });
+    const row = (name: string) => page.locator(".sx-wrap", { hasText: name });
 
     // Equal: the selector follows the stored method (no per-person inputs).
-    await row("Evenly").getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, row("Evenly"), "edit");
     await expect(form.getByRole("button", { name: "Equally" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -330,7 +350,7 @@ test.describe("Split flows", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
 
     // Percent: 50/25/25 reconstructed from the stored cents.
-    await row("Perc").getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, row("Perc"), "edit");
     await expect(form.getByRole("button", { name: "Percent" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -341,7 +361,7 @@ test.describe("Split flows", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
 
     // Shares: 2/1/1 recovered from the stored cents.
-    await row("Weighted").getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, row("Weighted"), "edit");
     await expect(form.getByRole("button", { name: "Shares" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -376,7 +396,7 @@ test.describe("Split flows", () => {
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
-    await page.getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, page, "edit");
     await page.locator("textarea").fill("Receipt attached later");
 
     const [req] = await Promise.all([
@@ -421,11 +441,13 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // e2e_user is a member, not the adder or the owner: both actions show.
-    await expect(page.getByRole("button", { name: "Edit expense" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Delete expense" })).toBeVisible();
+    await page.getByText("Bob", { exact: true }).first().waitFor({ state: "visible" });
+    await page.locator(".sx-main").click();
+    await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeVisible();
 
     // And an edit actually persists through the member-scoped hook.
-    await page.getByRole("button", { name: "Edit expense" }).click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page.getByPlaceholder("e.g. Dinner").fill("Bob's lunch");
     await page.locator('button[form="manage-split-expense-form"]').click();
     await expect(page.getByText("Bob's lunch", { exact: true })).toBeVisible();
@@ -453,7 +475,7 @@ test.describe("Split flows", () => {
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
 
-    await page.getByRole("button", { name: "Edit expense" }).click();
+    await rowAction(page, page, "edit");
     await expect(page.getByText("Edit settlement")).toBeVisible();
 
     const form = page.locator("#manage-split-expense-form");
@@ -469,5 +491,70 @@ test.describe("Split flows", () => {
     expect(body.split_type).toBe("settlement");
     expect(body.amount).toBe(7000);
     expect(body.shares).toEqual([{ user: "u_bob", amount: 7000 }]);
+  });
+
+  test("rows show my share, 'not included', and the Only you tag (SPL-K-12)", async ({ page }) => {
+    await mockSplitsApi(page, {
+      expenses: [
+        {
+          id: "e_solo",
+          group: "g1",
+          paid_by: "e2e_user",
+          added_by: "e2e_user",
+          name: "Solo coffee",
+          amount: 4000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-01",
+        },
+        {
+          id: "e_shared",
+          group: "g1",
+          paid_by: "u_bob",
+          added_by: "u_bob",
+          name: "Shared lunch",
+          amount: 10000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-02",
+        },
+        {
+          id: "e_others",
+          group: "g1",
+          paid_by: "u_bob",
+          added_by: "u_bob",
+          name: "Others only",
+          amount: 6000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-03",
+        },
+      ],
+      shares: [
+        { id: "s1", expense: "e_solo", user: "e2e_user", amount: 4000 },
+        { id: "s2", expense: "e_shared", user: "e2e_user", amount: 5000 },
+        { id: "s3", expense: "e_shared", user: "u_bob", amount: 5000 },
+        { id: "s4", expense: "e_others", user: "u_bob", amount: 3000 },
+        { id: "s5", expense: "e_others", user: "u_carol", amount: 3000 },
+      ],
+    });
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    const row = (name: string) => page.locator(".sx-wrap", { hasText: name });
+    await expect(row("Solo coffee").getByText("Only you", { exact: true })).toBeVisible();
+    await expect(row("Shared lunch").getByText(/your share/)).toBeVisible();
+    await expect(row("Others only").getByText(/not included/)).toBeVisible();
+
+    // Expanding shows the per-member breakdown.
+    await row("Shared lunch").locator(".sx-main").click();
+    await expect(
+      row("Shared lunch").locator(".sx-breakdown-name").filter({ hasText: "Bob" }),
+    ).toBeVisible();
+    await expect(
+      row("Shared lunch").locator(".sx-breakdown-name").filter({ hasText: "You" }),
+    ).toBeVisible();
   });
 });
