@@ -58,7 +58,8 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // Outstanding balance shown.
-    await expect(page.getByText("You owe Bob")).toBeVisible();
+    const net = page.locator(".gd-net");
+    await expect(net.getByText("You owe Bob")).toBeVisible();
 
     // Open the settle dialog from that balance row.
     await page.getByRole("button", { name: "Settle", exact: true }).click();
@@ -68,8 +69,8 @@ test.describe("Split flows", () => {
     await page.locator('button[form="settle-up-form"]').click();
 
     // Balance nets to zero → row gone, settled-up message shown.
-    await expect(page.getByText("You owe Bob")).toBeHidden();
-    await expect(page.getByText(/all settled up/i)).toBeVisible();
+    await expect(net.getByText("You owe Bob")).toBeHidden();
+    await expect(net.getByText(/all settled up/i)).toBeVisible();
   });
 
   test("editing an expense updates the feed (Section K)", async ({ page }) => {
@@ -127,12 +128,13 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // Raw view: a balance involving the current user is shown.
-    await expect(page.getByText("Bob owes you")).toBeVisible();
+    const net = page.locator(".gd-net");
+    await expect(net.getByText("Bob owes you")).toBeVisible();
 
     // Owner flips Simplify → current user nets to zero, balances collapse.
     await page.getByRole("switch").click();
-    await expect(page.getByText(/all settled up/i)).toBeVisible();
-    await expect(page.getByText("Bob owes you")).toBeHidden();
+    await expect(net.getByText(/all settled up/i)).toBeVisible();
+    await expect(net.getByText("Bob owes you")).toBeHidden();
   });
 
   test("Simplify toggle persists across close + reopen (SPL-J-4)", async ({ page }) => {
