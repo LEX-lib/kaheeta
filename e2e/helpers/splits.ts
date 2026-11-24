@@ -7,6 +7,8 @@ export interface SplitSeed {
   expenses?: Rec[];
   /** Shares for those expenses. */
   shares?: Rec[];
+  /** Owner of the "Trip" group (defaults to the signed-in e2e user). */
+  owner?: string;
 }
 
 /**
@@ -37,7 +39,7 @@ export async function mockSplitsApi(
       collectionName: "kaheeta_groups",
       name: "Trip",
       default_currency: "PHP",
-      created_by: "e2e_user",
+      created_by: seed.owner ?? "e2e_user",
       simplify_debts: false,
       public_id: "TRIPCODE123456",
       archived_at: "",

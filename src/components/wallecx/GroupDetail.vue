@@ -263,11 +263,10 @@ function openAddExpense(): void {
   showManage.value = true
 }
 
-// Settlements aren't editable through this form (no split inputs); they're
-// deleted + re-recorded instead.
+// Every viewer of a group expense is a member of that group, so any member may
+// edit any expense — including settlements (edited through a dedicated mode).
 function canEditExpense(ex: SplitExpense): boolean {
-  if (ex.split_type === 'settlement') return false
-  return ex.added_by === props.currentUserId || isOwner.value
+  return !!ex.group
 }
 
 async function openEditExpense(ex: SplitExpense): Promise<void> {
@@ -313,9 +312,9 @@ async function onSettleSaved(): Promise<void> {
   await loadLedger()
 }
 
-// The expense's adder or the group owner may delete it.
+// Any member of the group may delete an expense or settlement.
 function canDeleteExpense(ex: SplitExpense): boolean {
-  return ex.added_by === props.currentUserId || isOwner.value
+  return !!ex.group
 }
 
 function confirmDeleteExpense(ex: SplitExpense): void {

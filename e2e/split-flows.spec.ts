@@ -393,4 +393,42 @@ test.describe("Split flows", () => {
       { user: "u_carol", amount: 2500 },
     ]);
   });
+
+  test("a non-owner member sees edit/delete on someone else's expense (SPL-K-10)", async ({ page }) => {
+    await mockSplitsApi(page, {
+      owner: "u_bob",
+      expenses: [
+        {
+          id: "d1",
+          group: "g1",
+          paid_by: "u_bob",
+          added_by: "u_bob",
+          name: "Bob's dinner",
+          amount: 10000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-01",
+        },
+      ],
+      shares: [
+        { id: "sh_a", expense: "d1", user: "e2e_user", amount: 5000 },
+        { id: "sh_b", expense: "d1", user: "u_bob", amount: 5000 },
+      ],
+    });
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    // e2e_user is a member, not the adder or the owner: both actions show.
+    await expect(page.getByRole("button", { name: "Edit expense" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete expense" })).toBeVisible();
+
+    // And an edit actually persists through the member-scoped hook.
+    await page.getByRole("button", { name: "Edit expense" }).click();
+    await page.getByPlaceholder("e.g. Dinner").fill("Bob's lunch");
+    await page.locator('button[form="manage-split-expense-form"]').click();
+    await expect(page.getByText("Bob's lunch", { exact: true })).toBeVisible();
+  });
+
 });

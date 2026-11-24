@@ -218,7 +218,8 @@ routerAdd(
 );
 
 // DELETE /api/kaheeta/split-expenses/{id} — soft-delete an expense (or settlement)
-// by stamping deleted_at. Only the person who added it or the group owner may.
+// by stamping deleted_at. Any member of the expense's group may; group-less
+// (friend-to-friend) rows stay restricted to whoever added them.
 // Soft delete keeps the balance recompute correct and auditable.
 routerAdd(
   "DELETE",
@@ -235,20 +236,20 @@ routerAdd(
     }
 
     let canDelete = expense.get("added_by") === user.id;
-    if (!canDelete) {
-      const groupId = expense.get("group");
-      if (groupId) {
-        try {
-          const group = $app.findRecordById("kaheeta_groups", groupId);
-          canDelete = group.get("created_by") === user.id;
-        } catch (_) {
-          // group missing — fall through to the forbidden check below
-        }
-      }
+    const groupId = expense.get("group");
+    if (!canDelete && groupId) {
+      // Group expenses: any member of that group may modify them.
+      const membership = $app.findRecordsByFilter(
+        "kaheeta_group_members",
+        "group = {:g} && user = {:u}",
+        "", 1, 0,
+        { g: groupId, u: user.id },
+      );
+      canDelete = membership.length > 0;
     }
     if (!canDelete) {
       throw new ForbiddenError(
-        "Only the person who added the expense or the group owner can delete it.",
+        "Only members of this group can delete its expenses.",
       );
     }
 
@@ -265,8 +266,9 @@ routerAdd(
 );
 
 // PATCH /api/kaheeta/split-expenses/{id} — edit an expense atomically: update its
-// fields and REPLACE its shares (delete old, insert new). Only the person who
-// added it or the group owner may. Re-runs the same validation as create.
+// fields and REPLACE its shares (delete old, insert new). Any member of the
+// expense's group may (settlements included); group-less rows stay restricted to
+// whoever added them. Re-runs the same validation as create.
 routerAdd(
   "PATCH",
   "/api/kaheeta/split-expenses/{id}",
@@ -300,16 +302,18 @@ routerAdd(
 
     let canEdit = expense.get("added_by") === user.id;
     if (!canEdit && groupId) {
-      try {
-        const group = $app.findRecordById("kaheeta_groups", groupId);
-        canEdit = group.get("created_by") === user.id;
-      } catch (_) {
-        // group missing — fall through to the forbidden check below
-      }
+      // Group expenses: any member of that group may modify them.
+      const membership = $app.findRecordsByFilter(
+        "kaheeta_group_members",
+        "group = {:g} && user = {:u}",
+        "", 1, 0,
+        { g: groupId, u: user.id },
+      );
+      canEdit = membership.length > 0;
     }
     if (!canEdit) {
       throw new ForbiddenError(
-        "Only the person who added the expense or the group owner can edit it.",
+        "Only members of this group can edit its expenses.",
       );
     }
 
@@ -322,7 +326,13 @@ routerAdd(
       throw new BadRequestError("Amount must be a positive integer (minor units).");
     }
     const currency = (body.currency || "USD").trim();
-    const splitType = (body.split_type || "equal").trim();
+    const storedSplitType = expense.get("split_type");
+    let splitType = (body.split_type || storedSplitType || "equal").trim();
+    // A settlement stays a settlement: editing its amount/date/parties must not
+    // silently turn it into a normal shared expense.
+    if (storedSplitType === "settlement") {
+      splitType = "settlement";
+    }
     const expenseDate = (body.expense_date || "").trim();
     const paidBy = (body.paid_by || "").trim();
     if (!paidBy) {
@@ -340,6 +350,14 @@ routerAdd(
     const shares = Array.isArray(body.shares) ? body.shares : [];
     if (shares.length === 0) {
       throw new BadRequestError("At least one share is required.");
+    }
+    if (splitType === "settlement") {
+      if (shares.length !== 1) {
+        throw new BadRequestError("A settlement must have exactly one counterparty.");
+      }
+      if ((shares[0].user || "").trim() === paidBy) {
+        throw new BadRequestError("A settlement needs two different people.");
+      }
     }
     let shareSum = 0;
     for (let i = 0; i < shares.length; i++) {
