@@ -970,11 +970,18 @@ async function doDeleteGroup(): Promise<void> {
   min-width: 0;
 }
 @media (max-width: 639px) {
+  /* Add expense gets its own row; the two secondary actions share the next. */
   .gd-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
     width: 100%;
   }
+  .gd-actions > :first-child {
+    grid-column: 1 / -1;
+  }
   .gd-actions :deep(.p-button) {
-    flex: 1;
+    width: 100%;
   }
 }
 </style>

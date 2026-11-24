@@ -136,17 +136,20 @@ function toggleMenu(event: Event): void {
         <span class="sx-body">
           <span class="sx-name">{{ expense.name }}</span>
           <span class="sx-meta">
-            <template v-if="isSettlement">
+            <span v-if="isSettlement" class="sx-meta-payer">
               {{ payerName }} paid {{ settlementPayee }}
               {{ formatCents(expense.amount, expense.currency) }}
-            </template>
-            <template v-else>{{ payerName }} paid {{ formatCents(expense.amount, expense.currency) }}</template>
-            <template v-if="!isSettlement && myShare">
-              · your share {{ formatCents(myShareCents, expense.currency) }}
-            </template>
-            <template v-else-if="!isSettlement && shares.length > 0">
-              · not included
-            </template>
+            </span>
+            <span v-else class="sx-meta-payer">
+              {{ payerName }} paid {{ formatCents(expense.amount, expense.currency) }}
+            </span>
+            <span v-if="!isSettlement && myShare" class="sx-meta-share">
+              <span class="sx-meta-dot">· </span>your share
+              {{ formatCents(myShareCents, expense.currency) }}
+            </span>
+            <span v-else-if="!isSettlement && shares.length > 0" class="sx-meta-share">
+              <span class="sx-meta-dot">· </span>not included
+            </span>
           </span>
           <span class="sx-tags">
             <Tag v-if="isSettlement" value="Settlement" severity="secondary" />
@@ -375,5 +378,33 @@ function toggleMenu(event: Event): void {
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.6rem;
+}
+
+/* Phones: give the text the space the avatar used to take, let the meta wrap
+ * instead of truncating, and keep the amount/actions compact. */
+@media (max-width: 639px) {
+  .sx-main {
+    gap: 0.5rem;
+    padding: 0.6rem 0.55rem;
+  }
+  .sx-avatar {
+    display: none;
+  }
+  .sx-name {
+    font-size: 0.95rem;
+  }
+  .sx-meta {
+    display: flex;
+    flex-direction: column;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .sx-meta-dot {
+    display: none;
+  }
+  .sx-amounts {
+    font-size: 0.9rem;
+  }
 }
 </style>
