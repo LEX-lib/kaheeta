@@ -9,7 +9,11 @@ import type { SplitExpense, SplitShare } from '@/types/wallecx/splits/types'
 
 /** RFC 4180 escaping: quote when the value contains a separator, quote or newline. */
 export function csvEscape(value: unknown): string {
-  const text = value === null || value === undefined ? '' : String(value)
+  let text = value === null || value === undefined ? '' : String(value)
+  // Neutralize spreadsheet formula injection (=, +, -, @, tab/CR prefixes).
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`
+  }
   if (/[",\r\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`
   }

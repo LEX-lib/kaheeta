@@ -69,6 +69,14 @@ describe('csvEscape', () => {
     expect(csvEscape(null)).toBe('')
     expect(csvEscape(undefined)).toBe('')
   })
+
+  it('neutralizes spreadsheet formula injection', () => {
+    expect(csvEscape('=SUM(A1)')).toBe("'=SUM(A1)")
+    expect(csvEscape('+1')).toBe("'+1")
+    expect(csvEscape('-1')).toBe("'-1")
+    expect(csvEscape('@cmd')).toBe("'@cmd")
+    expect(csvEscape('=a,b')).toBe("\"'=a,b\"")
+  })
 })
 
 describe('toCsv', () => {
