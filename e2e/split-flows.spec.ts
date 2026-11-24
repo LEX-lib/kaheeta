@@ -132,7 +132,7 @@ test.describe("Split flows", () => {
     await expect(net.getByText("Bob owes you")).toBeVisible();
 
     // Owner flips Simplify → current user nets to zero, balances collapse.
-    await page.getByRole("switch").click();
+    await page.getByRole("switch", { name: "Simplify debts" }).click();
     await expect(net.getByText(/all settled up/i)).toBeVisible();
     await expect(net.getByText("Bob owes you")).toBeHidden();
   });
@@ -144,7 +144,7 @@ test.describe("Split flows", () => {
     await page.getByRole("tab", { name: /groups/i }).click();
     await page.getByText("Trip", { exact: true }).first().click();
 
-    const sw = page.getByRole("switch");
+    const sw = page.getByRole("switch", { name: "Simplify debts" });
     await expect(sw).not.toBeChecked();
 
     // Wait for the persist PATCH to settle — the simplify-changed emit (which
@@ -163,7 +163,7 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // Toggle reflects the persisted state, not the stale default.
-    await expect(page.getByRole("switch")).toBeChecked();
+    await expect(page.getByRole("switch", { name: "Simplify debts" })).toBeChecked();
   });
 
   test("member names render via the members hook (not the 'Member' placeholder)", async ({ page }) => {
@@ -559,5 +559,81 @@ test.describe("Split flows", () => {
     await expect(
       row("Shared lunch").locator(".sx-breakdown-name").filter({ hasText: "You" }),
     ).toBeVisible();
+  });
+
+  test("someone-else-only expenses are hidden until All expenses is on (SPL-K-13)", async ({ page }) => {
+    await mockSplitsApi(page, {
+      expenses: [
+        {
+          id: "e_shared",
+          group: "g1",
+          paid_by: "e2e_user",
+          added_by: "e2e_user",
+          name: "Team lunch",
+          amount: 6000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-11-03",
+        },
+        {
+          id: "e_solo_other",
+          group: "g1",
+          paid_by: "u_carol",
+          added_by: "u_carol",
+          name: "Carol only",
+          amount: 2000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-11-02",
+        },
+        {
+          id: "e_others_split",
+          group: "g1",
+          paid_by: "u_bob",
+          added_by: "u_bob",
+          name: "Others split",
+          amount: 9000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-11-01",
+        },
+      ],
+      shares: [
+        { id: "s1", expense: "e_shared", user: "e2e_user", amount: 3000 },
+        { id: "s2", expense: "e_shared", user: "u_bob", amount: 3000 },
+        { id: "s3", expense: "e_solo_other", user: "u_carol", amount: 2000 },
+        { id: "s4", expense: "e_others_split", user: "u_bob", amount: 4500 },
+        { id: "s5", expense: "e_others_split", user: "u_carol", amount: 4500 },
+      ],
+    });
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    const row = (name: string) => page.locator(".sx-wrap", { hasText: name });
+    await expect(row("Team lunch")).toBeVisible();
+    // Someone else's solo expense is hidden; an excluded multi-person one is not.
+    await expect(row("Carol only")).toHaveCount(0);
+    await expect(row("Others split").getByText(/not included/)).toBeVisible();
+
+    // Opt into the full ledger.
+    await page.getByRole("switch", { name: "Show all expenses" }).click();
+    await expect(row("Carol only")).toBeVisible();
+    await expect(row("Carol only").getByText("Only Carol", { exact: true })).toBeVisible();
+    // The Only tag replaces the redundant "not included" line.
+    await expect(row("Carol only").getByText(/not included/)).toHaveCount(0);
+  });
+
+  test("non-owners see only the simplified tag, not the Simplify label (SPL-J-7)", async ({ page }) => {
+    await mockSplitsApi(page, { owner: "u_bob", simplifyDebts: true });
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    await expect(page.getByText("simplified", { exact: true })).toBeVisible();
+    await expect(page.getByText("Simplify", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("switch", { name: "Simplify debts" })).toHaveCount(0);
   });
 });

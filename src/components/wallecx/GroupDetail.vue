@@ -139,9 +139,24 @@ const netByCurrency = computed(() => {
     .filter((n) => n.amount !== 0)
 })
 
+// An "only X" expense: one participant and it is not the current user. Those
+// clutter a member's board without affecting their balances, so they are
+// hidden until the viewer opts into the full ledger.
+function isSoloOther(ex: SplitExpense): boolean {
+  if (ex.split_type === 'settlement') return false
+  const exShares = sharesFor(ex.id)
+  return exShares.length === 1 && exShares[0]!.user !== props.currentUserId
+}
+
+const showAllExpenses = ref(false)
+const visibleExpenses = computed(() =>
+  showAllExpenses.value ? expenses.value : expenses.value.filter((ex) => !isSoloOther(ex)),
+)
+const hiddenExpenseCount = computed(() => expenses.value.length - visibleExpenses.value.length)
+
 const groupedExpenses = computed(() => {
   const groups: Array<{ key: string; label: string; items: SplitExpense[] }> = []
-  for (const ex of expenses.value) {
+  for (const ex of visibleExpenses.value) {
     const d = ex.expense_date ? dayjs(ex.expense_date) : null
     const valid = !!d && d.isValid()
     const key = valid ? d.format('YYYY-MM') : 'undated'
@@ -622,16 +637,17 @@ async function doDeleteGroup(): Promise<void> {
         </div>
       </template>
       <template #end>
-        <div class="gd-simplify">
-          <ToggleSwitch
-            v-if="isOwner"
-            v-model="simplifyOn"
-            :disabled="isSavingSimplify"
-            aria-label="Simplify debts"
-            @change="onToggleSimplify"
-          />
-          <span class="text-xs">Simplify</span>
-          <Tag v-if="!isOwner && simplifyOn" value="simplified" severity="secondary" />
+        <div v-if="isOwner || simplifyOn" class="gd-simplify">
+          <template v-if="isOwner">
+            <ToggleSwitch
+              v-model="simplifyOn"
+              :disabled="isSavingSimplify"
+              aria-label="Simplify debts"
+              @change="onToggleSimplify"
+            />
+            <span class="text-xs">Simplify</span>
+          </template>
+          <Tag v-else value="simplified" severity="secondary" />
         </div>
       </template>
     </Toolbar>
@@ -643,6 +659,19 @@ async function doDeleteGroup(): Promise<void> {
         No expenses yet. Add the first one.
       </p>
       <template v-else>
+        <div
+          v-if="hiddenExpenseCount > 0 || showAllExpenses"
+          class="gd-feed-head"
+        >
+          <div class="gd-all-expenses">
+            <ToggleSwitch v-model="showAllExpenses" aria-label="Show all expenses" />
+            <span class="text-xs">All expenses</span>
+          </div>
+        </div>
+        <p v-if="visibleExpenses.length === 0" class="gd-muted">
+          Nothing shared with you yet. Turn on <strong>All expenses</strong> to see the rest of
+          the group's ledger.
+        </p>
         <section v-for="bucket in groupedExpenses" :key="bucket.key" class="gd-month">
           <p class="gd-month-label">{{ bucket.label }}</p>
           <div class="gd-month-rows">
@@ -894,6 +923,20 @@ async function doDeleteGroup(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+.gd-feed-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -0.35rem;
+}
+.gd-all-expenses {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-typo-body);
+}
+.gd-all-expenses :deep(.p-toggleswitch) {
+  transform: scale(0.85);
 }
 .gd-month-label {
   font-size: 0.72rem;

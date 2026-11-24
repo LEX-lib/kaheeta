@@ -140,7 +140,10 @@ function toggleMenu(event: Event): void {
             <span v-else class="sx-meta-payer">
               {{ payerName }} paid {{ formatCents(expense.amount, expense.currency) }}
             </span>
-            <span v-if="!isSettlement && !myShare && shares.length > 0" class="sx-meta-share">
+            <span
+              v-if="!isSettlement && !myShare && shares.length > 0 && !onlyLabel"
+              class="sx-meta-share"
+            >
               <span class="sx-meta-dot">· </span>not included
             </span>
           </span>

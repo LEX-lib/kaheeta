@@ -9,6 +9,8 @@ export interface SplitSeed {
   shares?: Rec[];
   /** Owner of the "Trip" group (defaults to the signed-in e2e user). */
   owner?: string;
+  /** Whether the fixture group starts with simplify_debts enabled. */
+  simplifyDebts?: boolean;
 }
 
 /**
@@ -40,7 +42,7 @@ export async function mockSplitsApi(
       name: "Trip",
       default_currency: "PHP",
       created_by: seed.owner ?? "e2e_user",
-      simplify_debts: false,
+      simplify_debts: seed.simplifyDebts ?? false,
       public_id: "TRIPCODE123456",
       archived_at: "",
       created: "2026-01-01 00:00:00.000Z",

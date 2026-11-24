@@ -31,7 +31,7 @@ Legend: ☐ to do · ✅ pass · ❌ fail (note the ID + actual result)
 
 Frontend entry: log in → **My Wallet** → **Groups** tab (`mdi:account-group`).
 The tab is a two-pane surface: group rail on the left, the selected group
-(header, net position, actions, month-grouped feed, Members modal)
+(header, net position, actions, month-grouped feed with an **All expenses** toggle, Members modal)
 on the right. Mobile drills down into the detail with a **Back to groups** button.
 
 ---
@@ -187,7 +187,7 @@ You 50, You owe Carol 50 (you net zero).
 | SPL-J-2 | Raw view (toggle off) | You see both raw rows: "Bob owes you …" and "You owe Carol …" | ☐ |
 | SPL-J-3 | Flip **Simplify** on | Balances collapse — you net to zero → "You're all settled up."; the Bob→Carol transfer no longer routes through you | ☐ |
 | SPL-J-4 | Reopen the group later | Toggle state persisted (the group's `simplify_debts` flag) | ☐ |
-| SPL-J-5 | As a **non-owner** member | No toggle; if simplify is on, a "· simplified" hint shows and balances are simplified | ☐ |
+| SPL-J-5 | As a **non-owner** member | No toggle and no “Simplify” label; if simplify is on, a **simplified** Tag shows and balances are simplified | ☐ |
 | SPL-J-6 | Totals unchanged | Each person's net owed/owing is identical to the raw view — only the number of transfers drops | ☐ |
 
 ## K. Edit expense
@@ -204,7 +204,9 @@ You 50, You owe Carol 50 (you net zero).
 | SPL-K-8 | Stored **Percent** 50/25/25 and **Shares** 2/1/1 | Editor opens in Percent with 50/25/25 and in Shares with 2/1/1 | ☐ |
 | SPL-K-9 | Notes-only edit of a stored split | The saved shares are byte-for-byte unchanged (no cent drift) | ☐ |
 | SPL-K-10 | Add an expense with only yourself in **Split between** | Row shows an **Only you** Tag; expand shows your single share | ☐ |
-| SPL-K-11 | Rows for a shared expense | Summary shows who paid; a non-participant row shows **not included**; expanding lists every member's share (including yours) | ☐ |
+| SPL-K-11 | Rows for a shared expense | Summary shows who paid; a non-participant multi-person row shows **not included**; expanding lists every member's share (including yours) | ☐ |
+| SPL-K-12 | An expense whose only participant is another member | Hidden from the feed by default; a **not included** line never appears on these rows | ☐ |
+| SPL-K-13 | Flip **All expenses** on | Someone-else-only expenses appear with their **Only <name>** Tag; flip it off to hide them again | ☐ |
 
 ## L. Multi-currency
 
