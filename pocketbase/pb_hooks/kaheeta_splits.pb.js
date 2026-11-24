@@ -138,6 +138,14 @@ routerAdd(
     if (shareSum !== amount) {
       throw new BadRequestError("Shares must sum to the expense amount.");
     }
+    if (splitType === "settlement") {
+      if (shares.length !== 1) {
+        throw new BadRequestError("A settlement must have exactly one counterparty.");
+      }
+      if ((shares[0].user || "").trim() === paidBy) {
+        throw new BadRequestError("A settlement needs two different people.");
+      }
+    }
 
     // The caller must belong to the group.
     const callerMembership = $app.findRecordsByFilter(
@@ -325,7 +333,7 @@ routerAdd(
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new BadRequestError("Amount must be a positive integer (minor units).");
     }
-    const currency = (body.currency || "USD").trim();
+    const currency = (body.currency || expense.get("currency") || "USD").trim();
     const storedSplitType = expense.get("split_type");
     let splitType = (body.split_type || storedSplitType || "equal").trim();
     // A settlement stays a settlement: editing its amount/date/parties must not
@@ -333,7 +341,7 @@ routerAdd(
     if (storedSplitType === "settlement") {
       splitType = "settlement";
     }
-    const expenseDate = (body.expense_date || "").trim();
+    const expenseDate = (body.expense_date || expense.get("expense_date") || "").trim();
     const paidBy = (body.paid_by || "").trim();
     if (!paidBy) {
       throw new BadRequestError("A payer is required.");
@@ -375,27 +383,31 @@ routerAdd(
       throw new BadRequestError("Shares must sum to the expense amount.");
     }
 
-    // The payer must belong to the group.
-    const payerMembership = $app.findRecordsByFilter(
-      "kaheeta_group_members",
-      "group = {:g} && user = {:u}",
-      "", 1, 0,
-      { g: groupId, u: paidBy },
-    );
-    if (payerMembership.length === 0) {
-      throw new BadRequestError("The payer is not a member of this group.");
-    }
-    // Every share must be assigned to a member of the group.
-    for (let i = 0; i < shares.length; i++) {
-      const shareUserId = (shares[i].user || "").trim();
-      const shareMembership = $app.findRecordsByFilter(
+    // Group-less (friend-to-friend) rows have no membership table to check;
+    // their authorization is already the added_by check above.
+    if (groupId) {
+      // The payer must belong to the group.
+      const payerMembership = $app.findRecordsByFilter(
         "kaheeta_group_members",
         "group = {:g} && user = {:u}",
         "", 1, 0,
-        { g: groupId, u: shareUserId },
+        { g: groupId, u: paidBy },
       );
-      if (shareMembership.length === 0) {
-        throw new BadRequestError("A share is assigned to someone who is not a group member.");
+      if (payerMembership.length === 0) {
+        throw new BadRequestError("The payer is not a member of this group.");
+      }
+      // Every share must be assigned to a member of the group.
+      for (let i = 0; i < shares.length; i++) {
+        const shareUserId = (shares[i].user || "").trim();
+        const shareMembership = $app.findRecordsByFilter(
+          "kaheeta_group_members",
+          "group = {:g} && user = {:u}",
+          "", 1, 0,
+          { g: groupId, u: shareUserId },
+        );
+        if (shareMembership.length === 0) {
+          throw new BadRequestError("A share is assigned to someone who is not a group member.");
+        }
       }
     }
 
