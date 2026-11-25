@@ -970,6 +970,13 @@ async function doDeleteGroup(): Promise<void> {
 .gd-toolbar {
   padding: 0.35rem 0.5rem;
 }
+/* The toolbar has no end slot anymore, so let the actions fill the card;
+ * otherwise PrimeVue's start slot shrink-wraps the grid and leaves a blank
+ * column on wider phones. */
+.gd-toolbar :deep(.p-toolbar-start) {
+  flex: 1 1 100%;
+  min-width: 0;
+}
 .gd-actions {
   display: flex;
   flex-wrap: wrap;
