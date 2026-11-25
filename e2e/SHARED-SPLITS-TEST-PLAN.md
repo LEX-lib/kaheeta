@@ -183,7 +183,7 @@ You 50, You owe Carol 50 (you net zero).
 
 | ID | Step | Expected | Result |
 |----|------|----------|--------|
-| SPL-J-1 | Open the group as **owner** | A "Simplify" toggle shows next to Balances (off by default) | ☐ |
+| SPL-J-1 | Open the group as **owner** | A "Simplify" toggle shows in line with the net balance (`You lent / You owe`) on the right, off by default | ☐ |
 | SPL-J-2 | Raw view (toggle off) | You see both raw rows: "Bob owes you …" and "You owe Carol …" | ☐ |
 | SPL-J-3 | Flip **Simplify** on | Balances collapse — you net to zero → "You're all settled up."; the Bob→Carol transfer no longer routes through you | ☐ |
 | SPL-J-4 | Reopen the group later | Toggle state persisted (the group's `simplify_debts` flag) | ☐ |

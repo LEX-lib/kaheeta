@@ -581,40 +581,58 @@ async function doDeleteGroup(): Promise<void> {
       <Menu ref="headerMenuRef" :model="headerMenuItems" popup />
     </div>
 
-    <!-- Net position -->
+    <!-- Net position (Simplify toggle sits on the net line) -->
     <div class="gd-net">
-      <p v-if="ledgerLoading" class="gd-muted">Loading…</p>
-      <template v-else-if="balances.length === 0">
-        <Message severity="success" :closable="false">You're all settled up.</Message>
-      </template>
-      <template v-else>
-        <div v-for="n in netByCurrency" :key="n.currency" class="gd-net-line">
-          <span
-            :style="{ color: n.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
-          >
-            {{ n.amount > 0 ? 'You lent' : 'You owe' }}
-            {{ formatCents(Math.abs(n.amount), n.currency) }}
-          </span>
+      <div class="gd-net-head">
+        <div class="gd-net-main">
+          <p v-if="ledgerLoading" class="gd-muted">Loading…</p>
+          <Message v-else-if="balances.length === 0" severity="success" :closable="false">
+            You're all settled up.
+          </Message>
+          <template v-else>
+            <div v-for="n in netByCurrency" :key="n.currency" class="gd-net-line">
+              <span
+                :style="{ color: n.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
+              >
+                {{ n.amount > 0 ? 'You lent' : 'You owe' }}
+                {{ formatCents(Math.abs(n.amount), n.currency) }}
+              </span>
+            </div>
+          </template>
         </div>
-        <ul class="gd-balances">
-          <li
-            v-for="b in balances"
-            :key="`${b.userId}-${b.currency}`"
-            class="gd-balance"
+
+        <div v-if="isOwner || simplifyOn" class="gd-simplify">
+          <template v-if="isOwner">
+            <ToggleSwitch
+              v-model="simplifyOn"
+              :disabled="isSavingSimplify"
+              aria-label="Simplify debts"
+              @change="onToggleSimplify"
+            />
+            <span class="text-xs">Simplify</span>
+          </template>
+          <Tag v-else value="simplified" severity="secondary" />
+        </div>
+      </div>
+
+      <ul v-if="!ledgerLoading && balances.length > 0" class="gd-balances">
+        <li
+          v-for="b in balances"
+          :key="`${b.userId}-${b.currency}`"
+          class="gd-balance"
+        >
+          <span class="gd-balance-label">
+            <template v-if="b.amount > 0">{{ nameForUser(b.userId) }} owes you</template>
+            <template v-else>You owe {{ nameForUser(b.userId) }}</template>
+          </span>
+          <span
+            class="gd-balance-amount tabular-nums"
+            :style="{ color: b.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
           >
-            <span class="gd-balance-label">
-              <template v-if="b.amount > 0">{{ nameForUser(b.userId) }} owes you</template>
-              <template v-else>You owe {{ nameForUser(b.userId) }}</template>
-            </span>
-            <span
-              class="gd-balance-amount tabular-nums"
-              :style="{ color: b.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
-            >
-              {{ formatCents(Math.abs(b.amount), b.currency) }}
-            </span>
-          </li>
-        </ul>
-      </template>
+            {{ formatCents(Math.abs(b.amount), b.currency) }}
+          </span>
+        </li>
+      </ul>
     </div>
 
     <!-- Actions -->
@@ -638,20 +656,6 @@ async function doDeleteGroup(): Promise<void> {
             severity="secondary"
             @click="showMembers = true"
           />
-        </div>
-      </template>
-      <template #end>
-        <div v-if="isOwner || simplifyOn" class="gd-simplify">
-          <template v-if="isOwner">
-            <ToggleSwitch
-              v-model="simplifyOn"
-              :disabled="isSavingSimplify"
-              aria-label="Simplify debts"
-              @change="onToggleSimplify"
-            />
-            <span class="text-xs">Simplify</span>
-          </template>
-          <Tag v-else value="simplified" severity="secondary" />
         </div>
       </template>
     </Toolbar>
@@ -874,6 +878,20 @@ async function doDeleteGroup(): Promise<void> {
   flex-direction: column;
   gap: 0.35rem;
 }
+.gd-net-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.gd-net-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
 .gd-net-line {
   font-weight: 600;
 }
@@ -919,6 +937,8 @@ async function doDeleteGroup(): Promise<void> {
   align-items: center;
   gap: 0.35rem;
   color: var(--color-typo-body);
+  flex-shrink: 0;
+  padding-top: 0.1rem;
 }
 .gd-simplify :deep(.p-toggleswitch) {
   transform: scale(0.9);
