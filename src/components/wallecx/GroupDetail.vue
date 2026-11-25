@@ -139,13 +139,17 @@ const netByCurrency = computed(() => {
     .filter((n) => n.amount !== 0)
 })
 
-// An "only X" expense: one participant and it is not the current user. Those
-// clutter a member's board without affecting their balances, so they are
-// hidden until the viewer opts into the full ledger.
+// An "only X" expense that has nothing to do with the viewer: one participant
+// who is not the current user AND someone else paid. Anything the viewer paid
+// or shares in affects their balance and must stay on their board.
 function isSoloOther(ex: SplitExpense): boolean {
   if (ex.split_type === 'settlement') return false
   const exShares = sharesFor(ex.id)
-  return exShares.length === 1 && exShares[0]!.user !== props.currentUserId
+  return (
+    exShares.length === 1 &&
+    exShares[0]!.user !== props.currentUserId &&
+    ex.paid_by !== props.currentUserId
+  )
 }
 
 const showAllExpenses = ref(false)

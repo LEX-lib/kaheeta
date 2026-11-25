@@ -597,6 +597,17 @@ test.describe("Split flows", () => {
           split_type: "equal",
           expense_date: "2026-11-01",
         },
+        {
+          id: "e_solo_other_you_paid",
+          group: "g1",
+          paid_by: "e2e_user",
+          added_by: "e2e_user",
+          name: "Covered for Carol",
+          amount: 1000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-10-31",
+        },
       ],
       shares: [
         { id: "s1", expense: "e_shared", user: "e2e_user", amount: 3000 },
@@ -604,6 +615,7 @@ test.describe("Split flows", () => {
         { id: "s3", expense: "e_solo_other", user: "u_carol", amount: 2000 },
         { id: "s4", expense: "e_others_split", user: "u_bob", amount: 4500 },
         { id: "s5", expense: "e_others_split", user: "u_carol", amount: 4500 },
+        { id: "s6", expense: "e_solo_other_you_paid", user: "u_carol", amount: 1000 },
       ],
     });
 
@@ -616,6 +628,8 @@ test.describe("Split flows", () => {
     // Someone else's solo expense is hidden; an excluded multi-person one is not.
     await expect(row("Carol only")).toHaveCount(0);
     await expect(row("Others split").getByText(/not included/)).toBeVisible();
+    // A solo expense the viewer paid for affects their balance, so it stays.
+    await expect(row("Covered for Carol")).toBeVisible();
 
     // Opt into the full ledger.
     await page.getByRole("switch", { name: "Show all expenses" }).click();
