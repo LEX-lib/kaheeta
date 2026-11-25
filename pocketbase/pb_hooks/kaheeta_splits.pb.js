@@ -138,6 +138,14 @@ routerAdd(
     if (shareSum !== amount) {
       throw new BadRequestError("Shares must sum to the expense amount.");
     }
+    if (splitType === "settlement") {
+      if (shares.length !== 1) {
+        throw new BadRequestError("A settlement must have exactly one counterparty.");
+      }
+      if ((shares[0].user || "").trim() === paidBy) {
+        throw new BadRequestError("A settlement needs two different people.");
+      }
+    }
 
     // The caller must belong to the group.
     const callerMembership = $app.findRecordsByFilter(
@@ -218,7 +226,8 @@ routerAdd(
 );
 
 // DELETE /api/kaheeta/split-expenses/{id} — soft-delete an expense (or settlement)
-// by stamping deleted_at. Only the person who added it or the group owner may.
+// by stamping deleted_at. Any member of the expense's group may; group-less
+// (friend-to-friend) rows stay restricted to whoever added them.
 // Soft delete keeps the balance recompute correct and auditable.
 routerAdd(
   "DELETE",
@@ -235,20 +244,20 @@ routerAdd(
     }
 
     let canDelete = expense.get("added_by") === user.id;
-    if (!canDelete) {
-      const groupId = expense.get("group");
-      if (groupId) {
-        try {
-          const group = $app.findRecordById("kaheeta_groups", groupId);
-          canDelete = group.get("created_by") === user.id;
-        } catch (_) {
-          // group missing — fall through to the forbidden check below
-        }
-      }
+    const groupId = expense.get("group");
+    if (!canDelete && groupId) {
+      // Group expenses: any member of that group may modify them.
+      const membership = $app.findRecordsByFilter(
+        "kaheeta_group_members",
+        "group = {:g} && user = {:u}",
+        "", 1, 0,
+        { g: groupId, u: user.id },
+      );
+      canDelete = membership.length > 0;
     }
     if (!canDelete) {
       throw new ForbiddenError(
-        "Only the person who added the expense or the group owner can delete it.",
+        "Only members of this group can delete its expenses.",
       );
     }
 
@@ -265,8 +274,9 @@ routerAdd(
 );
 
 // PATCH /api/kaheeta/split-expenses/{id} — edit an expense atomically: update its
-// fields and REPLACE its shares (delete old, insert new). Only the person who
-// added it or the group owner may. Re-runs the same validation as create.
+// fields and REPLACE its shares (delete old, insert new). Any member of the
+// expense's group may (settlements included); group-less rows stay restricted to
+// whoever added them. Re-runs the same validation as create.
 routerAdd(
   "PATCH",
   "/api/kaheeta/split-expenses/{id}",
@@ -300,16 +310,18 @@ routerAdd(
 
     let canEdit = expense.get("added_by") === user.id;
     if (!canEdit && groupId) {
-      try {
-        const group = $app.findRecordById("kaheeta_groups", groupId);
-        canEdit = group.get("created_by") === user.id;
-      } catch (_) {
-        // group missing — fall through to the forbidden check below
-      }
+      // Group expenses: any member of that group may modify them.
+      const membership = $app.findRecordsByFilter(
+        "kaheeta_group_members",
+        "group = {:g} && user = {:u}",
+        "", 1, 0,
+        { g: groupId, u: user.id },
+      );
+      canEdit = membership.length > 0;
     }
     if (!canEdit) {
       throw new ForbiddenError(
-        "Only the person who added the expense or the group owner can edit it.",
+        "Only members of this group can edit its expenses.",
       );
     }
 
@@ -321,9 +333,15 @@ routerAdd(
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new BadRequestError("Amount must be a positive integer (minor units).");
     }
-    const currency = (body.currency || "USD").trim();
-    const splitType = (body.split_type || "equal").trim();
-    const expenseDate = (body.expense_date || "").trim();
+    const currency = (body.currency || expense.get("currency") || "USD").trim();
+    const storedSplitType = expense.get("split_type");
+    let splitType = (body.split_type || storedSplitType || "equal").trim();
+    // A settlement stays a settlement: editing its amount/date/parties must not
+    // silently turn it into a normal shared expense.
+    if (storedSplitType === "settlement") {
+      splitType = "settlement";
+    }
+    const expenseDate = (body.expense_date || expense.get("expense_date") || "").trim();
     const paidBy = (body.paid_by || "").trim();
     if (!paidBy) {
       throw new BadRequestError("A payer is required.");
@@ -341,6 +359,14 @@ routerAdd(
     if (shares.length === 0) {
       throw new BadRequestError("At least one share is required.");
     }
+    if (splitType === "settlement") {
+      if (shares.length !== 1) {
+        throw new BadRequestError("A settlement must have exactly one counterparty.");
+      }
+      if ((shares[0].user || "").trim() === paidBy) {
+        throw new BadRequestError("A settlement needs two different people.");
+      }
+    }
     let shareSum = 0;
     for (let i = 0; i < shares.length; i++) {
       const shareAmount = Math.round(Number(shares[i].amount));
@@ -357,27 +383,31 @@ routerAdd(
       throw new BadRequestError("Shares must sum to the expense amount.");
     }
 
-    // The payer must belong to the group.
-    const payerMembership = $app.findRecordsByFilter(
-      "kaheeta_group_members",
-      "group = {:g} && user = {:u}",
-      "", 1, 0,
-      { g: groupId, u: paidBy },
-    );
-    if (payerMembership.length === 0) {
-      throw new BadRequestError("The payer is not a member of this group.");
-    }
-    // Every share must be assigned to a member of the group.
-    for (let i = 0; i < shares.length; i++) {
-      const shareUserId = (shares[i].user || "").trim();
-      const shareMembership = $app.findRecordsByFilter(
+    // Group-less (friend-to-friend) rows have no membership table to check;
+    // their authorization is already the added_by check above.
+    if (groupId) {
+      // The payer must belong to the group.
+      const payerMembership = $app.findRecordsByFilter(
         "kaheeta_group_members",
         "group = {:g} && user = {:u}",
         "", 1, 0,
-        { g: groupId, u: shareUserId },
+        { g: groupId, u: paidBy },
       );
-      if (shareMembership.length === 0) {
-        throw new BadRequestError("A share is assigned to someone who is not a group member.");
+      if (payerMembership.length === 0) {
+        throw new BadRequestError("The payer is not a member of this group.");
+      }
+      // Every share must be assigned to a member of the group.
+      for (let i = 0; i < shares.length; i++) {
+        const shareUserId = (shares[i].user || "").trim();
+        const shareMembership = $app.findRecordsByFilter(
+          "kaheeta_group_members",
+          "group = {:g} && user = {:u}",
+          "", 1, 0,
+          { g: groupId, u: shareUserId },
+        );
+        if (shareMembership.length === 0) {
+          throw new BadRequestError("A share is assigned to someone who is not a group member.");
+        }
       }
     }
 

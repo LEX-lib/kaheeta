@@ -90,3 +90,81 @@ export function weightedSplit(
 
   return result;
 }
+
+/**
+ * Recover the integer percentage weights that produced a set of stored shares.
+ * The expense row only persists resolved cents, so edit mode has to
+ * reverse-engineer the original percentages: run the same largest-remainder
+ * split on a total of 100. The result always sums to exactly 100 (when the
+ * stored shares sum to something positive), so the editor opens valid.
+ *
+ * @param centsByUser Stored share amounts in integer minor units, by user id.
+ * @returns Integer percentages per user id summing to 100 (empty when all zero).
+ */
+export function percentagesFromShares(
+  centsByUser: Record<string, number>,
+): Record<string, number> {
+  return weightedSplit(100, centsByUser);
+}
+
+/**
+ * Recover integer share-count weights from stored share cents, e.g.
+ * `{ a: 5000, b: 2500, c: 2500 }` → `{ a: 2, b: 1, c: 1 }`. Divide by the
+ * greatest common divisor when that produces a clean ratio; otherwise fall back
+ * to rounding each amount against the smallest positive share (which collapses
+ * remainder-cent noise like `3334/3333/3333` back to `1/1/1`).
+ *
+ * @param centsByUser Stored share amounts in integer minor units, by user id.
+ * @returns Positive integer weights per user id (zero stays zero).
+ */
+export function shareCountsFromShares(
+  centsByUser: Record<string, number>,
+): Record<string, number> {
+  const ids = Object.keys(centsByUser);
+  const result: Record<string, number> = {};
+  if (ids.length === 0) {
+    return result;
+  }
+
+  const positives = ids
+    .map((id) => Math.abs(centsByUser[id] ?? 0))
+    .filter((value) => value > 0);
+  if (positives.length === 0) {
+    for (const id of ids) {
+      result[id] = 1;
+    }
+    return result;
+  }
+
+  let divisor = positives[0]!;
+  for (const value of positives.slice(1)) {
+    divisor = gcd(divisor, value);
+  }
+
+  if (divisor <= 1) {
+    // No clean common factor — normalise against the smallest positive share.
+    const min = Math.min(...positives);
+    for (const id of ids) {
+      const value = Math.abs(centsByUser[id] ?? 0);
+      result[id] = value > 0 ? Math.max(1, Math.round(value / min)) : 0;
+    }
+    return result;
+  }
+
+  for (const id of ids) {
+    const value = Math.abs(centsByUser[id] ?? 0);
+    result[id] = value > 0 ? Math.round(value / divisor) : 0;
+  }
+  return result;
+}
+
+function gcd(a: number, b: number): number {
+  let x = a;
+  let y = b;
+  while (y !== 0) {
+    const t = x % y;
+    x = y;
+    y = t;
+  }
+  return x;
+}

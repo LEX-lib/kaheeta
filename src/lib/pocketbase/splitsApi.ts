@@ -132,7 +132,8 @@ export function createSplitExpense(
 /**
  * Edit a split expense atomically: update its fields and REPLACE its shares.
  * The `group` in the payload is ignored server-side (an expense can't move
- * groups). Only the expense's `added_by` or the group owner is permitted.
+ * groups). Any member of the expense's group is permitted (group-less rows:
+ * only the adder).
  */
 export function updateSplitExpense(
   expenseId: string,
@@ -171,8 +172,8 @@ function buildExpenseBody(
 
 /**
  * Soft-delete a split expense (or settlement) by id. The hook stamps
- * `deleted_at` so balance recomputes exclude it. Only the expense's `added_by`
- * or the group owner is permitted.
+ * `deleted_at` so balance recomputes exclude it. Any member of the expense's
+ * group is permitted (group-less rows: only the adder).
  */
 export function deleteSplitExpense(expenseId: string): Promise<void> {
   return pb.send(`/api/kaheeta/split-expenses/${expenseId}`, { method: "DELETE" });

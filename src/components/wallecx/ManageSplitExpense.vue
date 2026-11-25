@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import { pb } from '@/lib/pocketbase'
 import { useToast } from '@/composables/useToast'
 import { useMobileEnv } from '@/composables/useMobileEnv'
-import { equalSplit, weightedSplit } from '@/lib/wallecx/splitMath'
+import { equalSplit, weightedSplit, percentagesFromShares, shareCountsFromShares } from '@/lib/wallecx/splitMath'
 import { formatCents, COMMON_CURRENCIES } from '@/lib/wallecx/splitFormat'
 import { compressToWebP } from '@/lib/wallecx/compressToWebP'
 import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
@@ -29,11 +29,15 @@ const props = defineProps<{
 }>()
 
 const isEditMode = computed(() => !!props.expense)
+// Settlements are edited through a dedicated single-counterparty mode: keep
+// their split_type so balances/feed continue to treat them as settlements.
+const isSettlement = computed(() => props.expense?.split_type === 'settlement')
 
 const visible = defineModel('visible', { type: Boolean, default: false, required: true })
 
 const emit = defineEmits<{
-  saved: []
+  /** Emits the saved record id so the parent can keep a filtered view in sync. */
+  saved: [expenseId?: string]
 }>()
 
 const toast = useToast()
@@ -61,6 +65,8 @@ const expenseDate = ref<Date>(new Date())
 const paidBy = ref('')
 const splitType = ref<FormSplitType>('equal')
 const selectedParticipants = ref<string[]>([])
+// Settlement mode: the single counterparty the debtor paid (users id).
+const settlementTo = ref('')
 // Per-type, per-user inputs (keyed by user id).
 const exactAmounts = ref<Record<string, number | null>>({}) // major units
 const percentages = ref<Record<string, number | null>>({})
@@ -150,6 +156,19 @@ const memberOptions = computed(() =>
   props.members.map((m) => ({ label: memberLabel(m), value: m.user })),
 )
 
+// Settlement counterparty: every member except the debtor who paid. If the
+// stored recipient has since left the group, keep them selectable so an
+// amount/date-only edit does not dead-end on a blank field.
+const counterpartyOptions = computed(() => {
+  const options = memberOptions.value.filter((o) => o.value !== paidBy.value)
+  const current = settlementTo.value
+  if (current && current !== paidBy.value && !options.some((o) => o.value === current)) {
+    const known = props.members.find((m) => m.user === current)
+    options.push({ label: known ? memberLabel(known) : 'Former member', value: current })
+  }
+  return options
+})
+
 const amountCents = computed(() => Math.round((amount.value ?? 0) * 100))
 
 // Resolved per-participant amounts in cents, by split type. Always keyed by the
@@ -189,6 +208,8 @@ interface FormSnapshot {
   splitType: FormSplitType
   notes: string
   paymentMode: string
+  settlementTo: string
+  expenseDate: string
 }
 
 const snapshot = ref<FormSnapshot | null>(null)
@@ -204,12 +225,18 @@ const isDirty = computed(() => {
     splitType.value !== s.splitType ||
     notes.value !== s.notes ||
     paymentMode.value !== s.paymentMode ||
+    dayjs(expenseDate.value).format('YYYY-MM-DD') !== s.expenseDate ||
+    settlementTo.value !== s.settlementTo ||
+    (splitSnapshot.value !== null && splitSignature() !== splitSnapshot.value) ||
     pendingFile.value !== null ||
     removeExistingReceipt.value
   )
 })
 
 // Seed the per-type inputs with sensible defaults for the current selection.
+// Called ONLY from an explicit split-type change (not a watcher): prefill in
+// edit mode writes its own per-person values, and a watcher used to overwrite
+// them with an equal split on the first open (stored exact splits looked equal).
 function seedInputs(): void {
   const sel = selectedParticipants.value
   if (splitType.value === 'exact') {
@@ -226,7 +253,45 @@ function seedInputs(): void {
   }
 }
 
-watch(splitType, seedInputs)
+function onSplitTypeChange(value: FormSplitType): void {
+  splitType.value = value
+  seedInputs()
+}
+
+// 'adjustment' is a legacy type with no inputs of its own; exact is its closest
+// editable form. 'settlement' is edited through a dedicated mode downstream.
+function formSplitTypeFromStored(stored: SplitType): FormSplitType {
+  if (stored === 'equal' || stored === 'percentage' || stored === 'share') {
+    return stored
+  }
+  return 'exact'
+}
+
+function centsByUser(from: SplitShare[]): Record<string, number> {
+  const m: Record<string, number> = {}
+  for (const s of from) m[s.user] = s.amount
+  return m
+}
+
+// A stable fingerprint of everything that produces the saved shares. When it
+// still matches the value captured at prefill, a save reuses the stored shares
+// verbatim — notes/receipt-only edits must never move a cent, and percentage /
+// share weights are reconstructed approximately.
+function splitSignature(): string {
+  const sel = [...selectedParticipants.value].sort()
+  const dump = (src: Record<string, number | null>): string =>
+    sel.map((u) => `${u}:${src[u] ?? 0}`).join(',')
+  return [
+    amountCents.value,
+    splitType.value,
+    sel.join(','),
+    dump(exactAmounts.value),
+    dump(percentages.value),
+    dump(shareCounts.value),
+  ].join('|')
+}
+
+const splitSnapshot = ref<string | null>(null)
 
 // Reset/prefill the form each time the dialog opens.
 watch(visible, (isOpen) => {
@@ -235,6 +300,7 @@ watch(visible, (isOpen) => {
     pendingFile.value = null
     removeExistingReceipt.value = false
     snapshot.value = null
+    splitSnapshot.value = null
     return
   }
   exactAmounts.value = {}
@@ -244,9 +310,9 @@ watch(visible, (isOpen) => {
   removeExistingReceipt.value = false
 
   if (props.expense) {
-    // Edit: prefill from the stored expense + its resolved shares. We only ever
-    // persisted resolved amounts, so edit always opens in Exact mode (the user
-    // can switch). Settlements aren't editable here (filtered upstream).
+    // Edit: prefill from the stored expense + its resolved shares. The split
+    // method comes from the stored `split_type`; its per-person inputs are
+    // reconstructed from the saved cents (only amounts are persisted).
     const ex = props.expense
     const exShares = props.expenseShares ?? []
     description.value = ex.name
@@ -254,13 +320,22 @@ watch(visible, (isOpen) => {
     expenseDate.value = ex.expense_date ? new Date(ex.expense_date) : new Date()
     paidBy.value = ex.paid_by
     currency.value = ex.currency || props.group.default_currency || 'USD'
-    splitType.value = 'exact'
+    splitType.value = formSplitTypeFromStored(ex.split_type)
     notes.value = ex.notes ?? ''
     paymentMode.value = ex.payment_mode ?? ''
     selectedParticipants.value = exShares.map((s) => s.user)
-    const exact: Record<string, number | null> = {}
-    for (const s of exShares) exact[s.user] = s.amount / 100
-    exactAmounts.value = exact
+    settlementTo.value = isSettlement.value ? (exShares[0]?.user ?? '') : ''
+    const storedCents = centsByUser(exShares)
+    if (splitType.value === 'exact') {
+      const exact: Record<string, number | null> = {}
+      for (const s of exShares) exact[s.user] = s.amount / 100
+      exactAmounts.value = exact
+    } else if (splitType.value === 'percentage') {
+      percentages.value = percentagesFromShares(storedCents)
+    } else if (splitType.value === 'share') {
+      shareCounts.value = shareCountsFromShares(storedCents)
+    }
+    splitSnapshot.value = splitSignature()
     snapshot.value = {
       description: description.value.trim(),
       amount: amount.value,
@@ -269,6 +344,8 @@ watch(visible, (isOpen) => {
       splitType: splitType.value,
       notes: notes.value,
       paymentMode: paymentMode.value,
+      settlementTo: settlementTo.value,
+      expenseDate: dayjs(expenseDate.value).format('YYYY-MM-DD'),
     }
     return
   }
@@ -283,6 +360,8 @@ watch(visible, (isOpen) => {
   notes.value = ''
   paymentMode.value = ''
   selectedParticipants.value = props.members.map((m) => m.user)
+  settlementTo.value = ''
+  splitSnapshot.value = null
   snapshot.value = {
     description: '',
     amount: null,
@@ -291,6 +370,8 @@ watch(visible, (isOpen) => {
     splitType: splitType.value,
     notes: '',
     paymentMode: '',
+    settlementTo: '',
+    expenseDate: dayjs(expenseDate.value).format('YYYY-MM-DD'),
   }
 })
 
@@ -304,12 +385,56 @@ async function onSubmit(): Promise<void> {
     toast.error('Enter an amount greater than zero.')
     return
   }
-  if (selectedParticipants.value.length === 0) {
-    toast.error('Select at least one participant.')
-    return
-  }
   if (!paidBy.value) {
     toast.error('Choose who paid.')
+    return
+  }
+
+  // Settlement mode: one counterparty receives the whole amount. The stored
+  // split_type is preserved so the row remains a settlement.
+  if (isSettlement.value) {
+    if (!settlementTo.value) {
+      toast.error('Choose who the settlement was paid to.')
+      return
+    }
+    if (settlementTo.value === paidBy.value) {
+      toast.error('The payer and the recipient must be different people.')
+      return
+    }
+    const settlementPayload = {
+      group: props.group.id,
+      name,
+      amount: amountCents.value,
+      currency: currency.value,
+      split_type: 'settlement' as SplitType,
+      expense_date: dayjs(expenseDate.value).format('YYYY-MM-DD'),
+      paid_by: paidBy.value,
+      notes: notes.value.trim() || undefined,
+      payment_mode: (paymentMode.value || undefined) as PaymentMode | undefined,
+      shares: [{ user: settlementTo.value, amount: amountCents.value }],
+    }
+    isSaving.value = true
+    try {
+      const updated = await updateSplitExpense(props.expense!.id, settlementPayload, {
+        receipt: pendingFile.value,
+        removeReceipt: removeExistingReceipt.value,
+      })
+      toast.success('Settlement updated.')
+      pendingFile.value = null
+      removeExistingReceipt.value = false
+      emit('saved', updated.id)
+      baseDialogRef.value?.closeWithoutGuard()
+    } catch (e: unknown) {
+      toast.error('Failed to update settlement. Please try again.')
+      console.error('ManageSplitExpense: settlement update failed', e)
+    } finally {
+      isSaving.value = false
+    }
+    return
+  }
+
+  if (selectedParticipants.value.length === 0) {
+    toast.error('Select at least one participant.')
     return
   }
 
@@ -327,11 +452,19 @@ async function onSubmit(): Promise<void> {
     return
   }
 
-  const shareMap = computedShares.value
-  const shares = selectedParticipants.value.map((user) => ({
-    user,
-    amount: shareMap[user] ?? 0,
-  }))
+  // If nothing that produces the split changed, reuse the stored shares exactly
+  // (reconstructed percentage/share weights can be a cent off for odd amounts).
+  const splitUntouched =
+    !!props.expense &&
+    splitSnapshot.value !== null &&
+    splitSignature() === splitSnapshot.value &&
+    (props.expenseShares?.length ?? 0) > 0
+  const shares = splitUntouched
+    ? props.expenseShares!.map((s) => ({ user: s.user, amount: s.amount }))
+    : selectedParticipants.value.map((user) => ({
+        user,
+        amount: computedShares.value[user] ?? 0,
+      }))
 
   const payload = {
     group: props.group.id,
@@ -352,16 +485,19 @@ async function onSubmit(): Promise<void> {
       receipt: pendingFile.value,
       removeReceipt: removeExistingReceipt.value,
     }
+    let savedId: string | undefined
     if (props.expense) {
-      await updateSplitExpense(props.expense.id, payload, fileOpts)
+      const updated = await updateSplitExpense(props.expense.id, payload, fileOpts)
+      savedId = updated.id
       toast.success('Expense updated.')
     } else {
-      await createSplitExpense(payload, fileOpts)
+      const created = await createSplitExpense(payload, fileOpts)
+      savedId = created.id
       toast.success('Expense added.')
     }
     pendingFile.value = null
     removeExistingReceipt.value = false
-    emit('saved')
+    emit('saved', savedId)
     baseDialogRef.value?.closeWithoutGuard()
   } catch (e: unknown) {
     toast.error(
@@ -384,7 +520,7 @@ function onCancel(): void {
   <BaseMobileDialog
     ref="baseDialogRef"
     v-model:visible="visible"
-    :title="isEditMode ? 'Edit expense' : 'Add expense'"
+    :title="isSettlement ? 'Edit settlement' : isEditMode ? 'Edit expense' : 'Add expense'"
     :is-dirty="isDirty"
     :is-saving="isSaving"
   >
@@ -497,16 +633,18 @@ function onCancel(): void {
         />
       </div>
 
-      <!-- Split method -->
+      <!-- Split method (shared expenses only) -->
+      <template v-if="!isSettlement">
       <div class="flex flex-col gap-1">
         <label class="text-sm" style="color: var(--color-typo-heading)">Split</label>
         <SelectButton
-          v-model="splitType"
+          :model-value="splitType"
           :options="SPLIT_TYPE_OPTIONS"
           option-label="label"
           option-value="value"
           :allow-empty="false"
           :disabled="isSaving"
+          @update:model-value="onSplitTypeChange"
         />
       </div>
 
@@ -597,6 +735,24 @@ function onCancel(): void {
           <template v-else>
             {{ shareTotal }} share{{ shareTotal === 1 ? '' : 's' }}
           </template>
+        </small>
+      </div>
+      </template>
+
+      <!-- Settlement: the debtor paid a single counterparty -->
+      <div v-else class="flex flex-col gap-1">
+        <label class="text-sm" style="color: var(--color-typo-heading)">Paid to *</label>
+        <Select
+          v-model="settlementTo"
+          fluid
+          option-label="label"
+          option-value="value"
+          :options="counterpartyOptions"
+          :disabled="isSaving"
+          placeholder="Who received the payment?"
+        />
+        <small style="color: var(--color-typo-muted)">
+          Recorded as a settlement between the payer and this member.
         </small>
       </div>
 

@@ -7,6 +7,10 @@ export interface SplitSeed {
   expenses?: Rec[];
   /** Shares for those expenses. */
   shares?: Rec[];
+  /** Owner of the "Trip" group (defaults to the signed-in e2e user). */
+  owner?: string;
+  /** Whether the fixture group starts with simplify_debts enabled. */
+  simplifyDebts?: boolean;
 }
 
 /**
@@ -37,8 +41,8 @@ export async function mockSplitsApi(
       collectionName: "kaheeta_groups",
       name: "Trip",
       default_currency: "PHP",
-      created_by: "e2e_user",
-      simplify_debts: false,
+      created_by: seed.owner ?? "e2e_user",
+      simplify_debts: seed.simplifyDebts ?? false,
       public_id: "TRIPCODE123456",
       archived_at: "",
       created: "2026-01-01 00:00:00.000Z",
@@ -104,10 +108,36 @@ export async function mockSplitsApi(
     return r.fulfill({ status: 200, contentType: "application/json", body: listBody(live) });
   });
 
+  const validateShares = async (
+    body: Rec,
+    route: import("@playwright/test").Route,
+    effectiveSplitType: unknown,
+  ): Promise<boolean> => {
+    const amount = Number(body.amount);
+    const rows = (body.shares as Array<{ user: string; amount: number }>) ?? [];
+    const sum = rows.reduce((total, s) => total + Number(s.amount), 0);
+    if (sum !== amount) {
+      await json(route, 400, { message: "Shares must sum to the expense amount." });
+      return false;
+    }
+    if (effectiveSplitType === "settlement") {
+      if (rows.length !== 1) {
+        await json(route, 400, { message: "A settlement must have exactly one counterparty." });
+        return false;
+      }
+      if (rows[0]!.user === body.paid_by) {
+        await json(route, 400, { message: "A settlement needs two different people." });
+        return false;
+      }
+    }
+    return true;
+  };
+
   // --- Create hook (append expense + shares) ---
   await page.route("**/api/kaheeta/split-expenses", async (route) => {
     if (route.request().method() !== "POST") return route.fallback();
     const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
+    if (!(await validateShares(body, route, body.split_type))) return;
     posted.push(body);
     const id = genId("e_");
     expenses.push({
@@ -154,32 +184,41 @@ export async function mockSplitsApi(
     }
     if (method === "PATCH") {
       const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
-      if (ex) {
-        ex.name = body.name;
-        ex.amount = body.amount;
-        ex.currency = body.currency;
-        ex.split_type = body.split_type;
-        ex.expense_date = body.expense_date;
-        ex.paid_by = body.paid_by;
-        ex.notes = body.notes ?? "";
-        ex.payment_mode = body.payment_mode ?? "";
-        if (body.remove_receipt) ex.receipt = "";
-        // Replace shares for this expense.
-        for (let i = shares.length - 1; i >= 0; i--) {
-          if (shares[i]!.expense === id) shares.splice(i, 1);
-        }
-        for (const s of (body.shares as Array<{ user: string; amount: number }>) ?? []) {
-          shares.push({
-            id: genId("sh_"),
-            collectionId: "kaheeta_split_shares",
-            collectionName: "kaheeta_split_shares",
-            expense: id,
-            user: s.user,
-            amount: s.amount,
-          });
-        }
+      if (!ex) return json(route, 404, { message: "Expense not found." });
+
+      // The e2e user is always a member of the fixture group, so the hook's
+      // membership gate is always satisfied here; server-side authz coverage
+      // lives in the manual test plan (live PocketBase).
+      const storedType = ex.split_type;
+      const effectiveType =
+        storedType === "settlement" ? "settlement" : (body.split_type ?? storedType);
+      if (!(await validateShares(body, route, effectiveType))) return;
+
+      // A stored settlement stays a settlement, even if the body omits it.
+      ex.name = body.name ?? ex.name;
+      ex.amount = body.amount ?? ex.amount;
+      ex.currency = body.currency ?? ex.currency ?? "USD";
+      ex.split_type = effectiveType;
+      ex.expense_date = body.expense_date ?? ex.expense_date;
+      ex.paid_by = body.paid_by ?? ex.paid_by;
+      ex.notes = body.notes ?? "";
+      ex.payment_mode = body.payment_mode ?? "";
+      if (body.remove_receipt) ex.receipt = "";
+      // Replace shares for this expense.
+      for (let i = shares.length - 1; i >= 0; i--) {
+        if (shares[i]!.expense === id) shares.splice(i, 1);
       }
-      return json(route, 200, { id, name: body.name, amount: body.amount });
+      for (const s of (body.shares as Array<{ user: string; amount: number }>) ?? []) {
+        shares.push({
+          id: genId("sh_"),
+          collectionId: "kaheeta_split_shares",
+          collectionName: "kaheeta_split_shares",
+          expense: id,
+          user: s.user,
+          amount: s.amount,
+        });
+      }
+      return json(route, 200, { id, name: ex.name, amount: ex.amount });
     }
     return route.fallback();
   });
@@ -239,6 +278,16 @@ export async function mockSplitsApi(
       return json(route, 200, { ok: true });
     }
     if (method === "PATCH") {
+      const body = JSON.parse(route.request().postData() ?? "{}") as Rec;
+      const group = groups.find((g) => g.id === id);
+      if (group) {
+        if (typeof body.simplify_debts === "boolean") {
+          group.simplify_debts = body.simplify_debts;
+        }
+        if (typeof body.name === "string") group.name = body.name;
+        if (body.archived === true) group.archived_at = "2026-06-30 00:00:00.000Z";
+        if (body.archived === false) group.archived_at = "";
+      }
       return json(route, 200, { ok: true });
     }
     return route.fallback();

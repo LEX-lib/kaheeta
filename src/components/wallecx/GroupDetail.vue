@@ -9,7 +9,7 @@ import { useConfirm } from 'primevue/useconfirm' // explicit — NOT auto-resolv
 import { computeBalances } from '@/lib/wallecx/balances'
 import { simplifyDebts } from '@/lib/wallecx/simplifyDebts'
 import { formatCents } from '@/lib/wallecx/splitFormat'
-import { PAYMENT_MODES } from '@/lib/wallecx/expenseSchema'
+import { buildGroupSharesCsv, groupSharesCsvFilename } from '@/lib/wallecx/csv'
 import {
   leaveGroup,
   deleteGroup,
@@ -25,10 +25,10 @@ import type {
   GroupMember,
   SplitExpense,
   SplitShare,
-  BalanceSummary,
 } from '@/types/wallecx/splits/types'
 import type { SuggestedMember } from '@/lib/pocketbase/splitsApi'
 import ManageSplitExpense from './ManageSplitExpense.vue'
+import SplitExpenseRow from './SplitExpenseRow.vue'
 import SettleUpDialog from './SettleUpDialog.vue'
 import AttachmentPreview from './AttachmentPreview.vue'
 import DragHandle from './DragHandle.vue'
@@ -36,11 +36,14 @@ import DragHandle from './DragHandle.vue'
 const props = defineProps<{
   group: Group
   currentUserId: string
+  /** Mobile drill-down: show the back button to the group rail. */
+  showBack?: boolean
 }>()
 
 const emit = defineEmits<{
   left: []
   deleted: []
+  back: []
   'simplify-changed': [value: boolean]
 }>()
 
@@ -62,21 +65,73 @@ const showManage = ref(false)
 const editingExpense = ref<SplitExpense | null>(null)
 const manageToken = ref('')
 const showSettle = ref(false)
-const settleBalance = ref<BalanceSummary | null>(null)
 const simplifyOn = ref(props.group.simplify_debts)
+watch(
+  () => props.group.simplify_debts,
+  (value) => {
+    simplifyOn.value = value
+  },
+)
 const isSavingSimplify = ref(false)
 const isExporting = ref(false)
+const isExportingCsv = ref(false)
+const showMembers = ref(false)
+// A discarded invite draft should not come back the next time the modal opens.
+watch(showMembers, (open) => {
+  if (!open) inviteEmail.value = ''
+})
+
+function closeMembers(): void {
+  if (!inviteEmail.value.trim()) {
+    showMembers.value = false
+    return
+  }
+  confirm.require({
+    header: 'Discard invite?',
+    message: 'The email you typed will be discarded.',
+    rejectProps: { label: 'Keep editing', severity: 'secondary', outlined: true },
+    acceptProps: { label: 'Discard', severity: 'danger' },
+    accept: () => {
+      inviteEmail.value = ''
+      showMembers.value = false
+    },
+  })
+}
 
 // Receipt preview mirrors the Expenses tab: token required for protected files.
-const isMobile = useIsMobile()
+const isMobile = useIsMobile(767)
 const showPreview = ref(false)
 const previewRecord = ref<SplitExpense | null>(null)
 const previewToken = ref('')
 
 const isOwner = computed(() => props.group.created_by === props.currentUserId)
 
-function paymentModeLabel(value: string): string {
-  return PAYMENT_MODES.find((m) => m.value === value)?.label ?? value
+const headerMenuRef = ref<{ toggle: (e: Event) => void } | null>(null)
+const headerMenuItems = computed(() => {
+  const items: Array<Record<string, unknown>> = []
+  if (!isMobile.value) {
+    items.push({ label: 'Download JSON', icon: 'pi pi-download', command: exportJson })
+  }
+  items.push(
+    isOwner.value
+      ? {
+          label: 'Delete group',
+          icon: 'pi pi-trash',
+          class: 'gd-menu-danger',
+          command: confirmDeleteGroup,
+        }
+      : {
+          label: 'Leave group',
+          icon: 'pi pi-sign-out',
+          class: 'gd-menu-danger',
+          command: confirmLeave,
+        },
+  )
+  return items
+})
+
+function toggleHeaderMenu(event: Event): void {
+  headerMenuRef.value?.toggle(event)
 }
 
 function memberLabel(m: GroupMember): string {
@@ -89,20 +144,77 @@ function nameForUser(userId: string): string {
   return userId === props.currentUserId ? 'You' : 'Someone'
 }
 
+function addedByName(ex: SplitExpense): string {
+  if (ex.added_by === props.currentUserId) return 'you'
+  return nameForUser(ex.added_by)
+}
+
 const balances = computed(() =>
   simplifyOn.value
     ? simplifyDebts(expenses.value, shares.value, props.currentUserId)
     : computeBalances(expenses.value, shares.value, props.currentUserId),
 )
 
+// Net position per currency (positive = you lent, negative = you owe).
+const netByCurrency = computed(() => {
+  const net = new Map<string, number>()
+  for (const b of balances.value) {
+    net.set(b.currency, (net.get(b.currency) ?? 0) + b.amount)
+  }
+  return [...net.entries()]
+    .map(([currency, amount]) => ({ currency, amount }))
+    .filter((n) => n.amount !== 0)
+})
+
+// An "only X" expense that has nothing to do with the viewer: one participant
+// who is not the current user AND someone else paid. Anything the viewer paid
+// or shares in affects their balance and must stay on their board.
+function isSoloOther(ex: SplitExpense): boolean {
+  const exShares = sharesFor(ex.id)
+  return (
+    exShares.length === 1 &&
+    exShares[0]!.user !== props.currentUserId &&
+    ex.paid_by !== props.currentUserId
+  )
+}
+
+const showAllExpenses = ref(false)
+const visibleExpenses = computed(() =>
+  showAllExpenses.value ? expenses.value : expenses.value.filter((ex) => !isSoloOther(ex)),
+)
+const hiddenExpenseCount = computed(() => expenses.value.length - visibleExpenses.value.length)
+
+const groupedExpenses = computed(() => {
+  const groups: Array<{ key: string; label: string; items: SplitExpense[] }> = []
+  for (const ex of visibleExpenses.value) {
+    const d = ex.expense_date ? dayjs(ex.expense_date) : null
+    const valid = !!d && d.isValid()
+    const key = valid ? d.format('YYYY-MM') : 'undated'
+    const label = valid ? d.format('MMMM').toUpperCase() : 'UNDATED'
+    let bucket = groups.find((g) => g.key === key)
+    if (!bucket) {
+      bucket = { key, label, items: [] }
+      groups.push(bucket)
+    }
+    bucket.items.push(ex)
+  }
+  return groups
+})
+
+const shownAvatars = computed(() => members.value.slice(0, 5))
+const extraMembers = computed(() => Math.max(0, members.value.length - shownAvatars.value.length))
+
 const sharesForEditing = computed(() =>
-  editingExpense.value
-    ? shares.value.filter((s) => s.expense === editingExpense.value!.id)
-    : [],
+  editingExpense.value ? sharesFor(editingExpense.value.id) : [],
 )
 
-// Export the group's ledger as JSON (desktop only — the trigger is hidden on
-// mobile). Mirrors ExpensesTab's "Download records". Uses the already-loaded
+// Shares belonging to one expense (the row renders its own breakdown).
+function sharesFor(expenseId: string): SplitShare[] {
+  return shares.value.filter((s) => s.expense === expenseId)
+}
+
+// Export the group's ledger as JSON (desktop only — reachable from the header
+// menu). Mirrors ExpensesTab's "Download records". Uses the already-loaded
 // expenses/shares/balances; no extra fetch.
 function exportJson(): void {
   if (isExporting.value) return
@@ -134,9 +246,10 @@ function exportJson(): void {
         payment_mode: ex.payment_mode ?? '',
         receipt: ex.receipt ?? '',
         paid_by: nameForUser(ex.paid_by),
-        shares: shares.value
-          .filter((s) => s.expense === ex.id)
-          .map((s) => ({ user: nameForUser(s.user), amount: s.amount })),
+        shares: sharesFor(ex.id).map((s) => ({
+          user: nameForUser(s.user),
+          amount: s.amount,
+        })),
       })),
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -155,6 +268,37 @@ function exportJson(): void {
     console.error('GroupDetail: exportJson failed', e)
   } finally {
     isExporting.value = false
+  }
+}
+
+// CSV report: one row per (expense × member share) so any member can filter
+// their own share in a spreadsheet. Available on every viewport.
+function exportCsv(): void {
+  if (isExportingCsv.value) return
+  isExportingCsv.value = true
+  try {
+    const csv = buildGroupSharesCsv({
+      groupName: props.group.name,
+      expenses: expenses.value,
+      shares: shares.value,
+      currentUserId: props.currentUserId,
+      nameForUser,
+    })
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = groupSharesCsvFilename(props.group.name, dayjs().format('YYYY-MM-DD'))
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+    toast.success('CSV report exported.')
+  } catch (e: unknown) {
+    toast.error('Export failed. Please try again.')
+    console.error('GroupDetail: exportCsv failed', e)
+  } finally {
+    isExportingCsv.value = false
   }
 }
 
@@ -263,13 +407,6 @@ function openAddExpense(): void {
   showManage.value = true
 }
 
-// Settlements aren't editable through this form (no split inputs); they're
-// deleted + re-recorded instead.
-function canEditExpense(ex: SplitExpense): boolean {
-  if (ex.split_type === 'settlement') return false
-  return ex.added_by === props.currentUserId || isOwner.value
-}
-
 async function openEditExpense(ex: SplitExpense): Promise<void> {
   // Edit mode with an existing receipt needs a file token to render the thumbnail.
   try {
@@ -299,12 +436,17 @@ async function openReceiptPreview(ex: SplitExpense): Promise<void> {
   showPreview.value = true
 }
 
-async function onExpenseSaved(): Promise<void> {
+async function onExpenseSaved(expenseId?: string): Promise<void> {
   await loadLedger()
+  if (!expenseId) return
+  const saved = expenses.value.find((ex) => ex.id === expenseId)
+  if (saved && isSoloOther(saved)) {
+    showAllExpenses.value = true
+    toast.info('This expense involves other members — showing all expenses.')
+  }
 }
 
-function openSettle(b: BalanceSummary): void {
-  settleBalance.value = b
+function openSettle(): void {
   showSettle.value = true
 }
 
@@ -313,15 +455,10 @@ async function onSettleSaved(): Promise<void> {
   await loadLedger()
 }
 
-// The expense's adder or the group owner may delete it.
-function canDeleteExpense(ex: SplitExpense): boolean {
-  return ex.added_by === props.currentUserId || isOwner.value
-}
-
 function confirmDeleteExpense(ex: SplitExpense): void {
   confirm.require({
-    header: 'Delete expense?',
-    message: `Delete "${ex.name}"? This removes it from the group's balances.`,
+    header: ex.split_type === 'settlement' ? 'Delete settlement?' : 'Delete expense?',
+    message: `Delete "${ex.name}"? Added by ${addedByName(ex)} — this changes everyone's balances.`,
     icon: 'pi pi-exclamation-triangle',
     rejectProps: { label: 'Keep', severity: 'secondary', outlined: true },
     acceptProps: { label: 'Delete', severity: 'danger' },
@@ -332,7 +469,7 @@ function confirmDeleteExpense(ex: SplitExpense): void {
 async function doDeleteExpense(ex: SplitExpense): Promise<void> {
   try {
     await deleteSplitExpense(ex.id)
-    toast.success('Expense deleted.')
+    toast.success(ex.split_type === 'settlement' ? 'Settlement deleted.' : 'Expense deleted.')
     await loadLedger()
   } catch (e: unknown) {
     toast.error('Failed to delete expense. Please try again.')
@@ -403,18 +540,18 @@ async function doLeave(): Promise<void> {
   }
 }
 
-function confirmDelete(): void {
+function confirmDeleteGroup(): void {
   confirm.require({
     header: 'Delete group?',
     message: `Delete "${props.group.name}"? This removes it for everyone and cannot be undone.`,
     icon: 'pi pi-exclamation-triangle',
     rejectProps: { label: 'Keep', severity: 'secondary', outlined: true },
     acceptProps: { label: 'Delete', severity: 'danger' },
-    accept: doDelete,
+    accept: doDeleteGroup,
   })
 }
 
-async function doDelete(): Promise<void> {
+async function doDeleteGroup(): Promise<void> {
   try {
     await deleteGroup(props.group.id)
     toast.success('Group deleted.')
@@ -427,223 +564,256 @@ async function doDelete(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <!-- Balances -->
-    <div>
-      <div class="flex items-center justify-between mb-2 gap-2">
-        <div class="flex items-center gap-2 min-w-0">
-          <p class="text-sm font-medium">Balances</p>
-          <label
-            v-if="isOwner"
-            class="flex items-center gap-1 text-xs opacity-80 cursor-pointer"
-          >
+  <div class="gd">
+    <!-- Header -->
+    <div class="gd-head">
+      <Button
+        v-if="showBack"
+        text
+        rounded
+        size="small"
+        aria-label="Back to groups"
+        @click="emit('back')"
+      >
+        <iconify-icon icon="mdi:arrow-left" width="20" height="20" aria-hidden="true"></iconify-icon>
+      </Button>
+      <h3 class="gd-title">{{ group.name }}</h3>
+      <Tag v-if="isOwner" value="Owner" severity="secondary" class="hidden sm:inline-flex" />
+      <span class="gd-spacer" />
+      <AvatarGroup v-if="members.length" class="gd-avatars">
+        <Avatar
+          v-for="m in shownAvatars"
+          :key="m.id"
+          :label="memberLabel(m).slice(0, 1).toUpperCase()"
+          shape="circle"
+        />
+        <Avatar v-if="extraMembers > 0" :label="`+${extraMembers}`" shape="circle" />
+      </AvatarGroup>
+      <Button
+        text
+        rounded
+        size="small"
+        aria-label="Export CSV"
+        :loading="isExportingCsv"
+        :disabled="ledgerLoading"
+        @click="exportCsv"
+      >
+        <iconify-icon icon="mdi:file-delimited-outline" width="20" height="20"></iconify-icon>
+      </Button>
+      <Button
+        text
+        rounded
+        size="small"
+        aria-label="Group actions"
+        aria-haspopup="true"
+        @click="toggleHeaderMenu"
+      >
+        <iconify-icon icon="mdi:dots-horizontal" width="20" height="20"></iconify-icon>
+      </Button>
+      <Menu ref="headerMenuRef" :model="headerMenuItems" popup />
+    </div>
+
+    <!-- Net position (Simplify toggle sits on the net line) -->
+    <div class="gd-net">
+      <div class="gd-net-head">
+        <div class="gd-net-main">
+          <p v-if="ledgerLoading" class="gd-muted">Loading…</p>
+          <Message v-else-if="balances.length === 0" severity="success" :closable="false">
+            You're all settled up.
+          </Message>
+          <template v-else>
+            <div v-for="n in netByCurrency" :key="n.currency" class="gd-net-line">
+              <span
+                :style="{ color: n.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
+              >
+                {{ n.amount > 0 ? 'You lent' : 'You owe' }}
+                {{ formatCents(Math.abs(n.amount), n.currency) }}
+              </span>
+            </div>
+          </template>
+        </div>
+
+        <div v-if="isOwner || simplifyOn" class="gd-simplify">
+          <template v-if="isOwner">
             <ToggleSwitch
               v-model="simplifyOn"
               :disabled="isSavingSimplify"
+              aria-label="Simplify debts"
               @change="onToggleSimplify"
             />
-            Simplify
-          </label>
-          <span v-else-if="simplifyOn" class="text-xs opacity-60">· simplified</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <!-- Export is desktop-only (hidden on mobile), mirroring Expenses. -->
-          <span class="hidden sm:contents">
-            <Button
-              label="Download records"
-              icon="pi pi-download"
-              size="small"
-              severity="secondary"
-              :loading="isExporting"
-              :disabled="ledgerLoading"
-              @click="exportJson"
-            />
-          </span>
-          <Button label="Add expense" icon="pi pi-plus" size="small" @click="openAddExpense" />
+            <span class="text-xs">Simplify</span>
+          </template>
+          <Tag v-else value="simplified" severity="secondary" />
         </div>
       </div>
-      <div v-if="ledgerLoading" class="text-sm opacity-70">Loading…</div>
-      <p v-else-if="balances.length === 0" class="text-sm opacity-70">
-        All settled up — no outstanding balances.
-      </p>
-      <ul v-else class="flex flex-col gap-1">
+
+      <ul v-if="!ledgerLoading && balances.length > 0" class="gd-balances">
         <li
           v-for="b in balances"
           :key="`${b.userId}-${b.currency}`"
-          class="flex items-center justify-between gap-2 text-sm"
+          class="gd-balance"
         >
-          <span class="truncate flex-1">
+          <span class="gd-balance-label">
             <template v-if="b.amount > 0">{{ nameForUser(b.userId) }} owes you</template>
             <template v-else>You owe {{ nameForUser(b.userId) }}</template>
           </span>
           <span
-            class="font-medium tabular-nums"
+            class="gd-balance-amount tabular-nums"
             :style="{ color: b.amount > 0 ? 'var(--p-green-500)' : 'var(--p-amber-500)' }"
           >
             {{ formatCents(Math.abs(b.amount), b.currency) }}
           </span>
-          <Button
-            label="Settle"
-            size="small"
-            severity="secondary"
-            text
-            @click="openSettle(b)"
-          />
         </li>
       </ul>
     </div>
 
-    <!-- Expense feed -->
-    <div>
-      <p class="text-sm font-medium mb-2">Expenses</p>
-      <div v-if="ledgerLoading" class="text-sm opacity-70">Loading…</div>
-      <p v-else-if="expenses.length === 0" class="text-sm opacity-70">
+    <!-- Actions -->
+    <Toolbar class="gd-toolbar">
+      <template #start>
+        <div class="gd-actions">
+          <Button label="Add expense" icon="pi pi-plus" size="small" @click="openAddExpense" />
+          <Button
+            label="Settle up"
+            icon="pi pi-wallet"
+            size="small"
+            severity="secondary"
+            :disabled="ledgerLoading || balances.length === 0"
+            @click="openSettle"
+          />
+          <Button
+            :label="isOwner ? 'Add members' : 'Members'"
+            :icon="isOwner ? 'pi pi-user-plus' : 'pi pi-users'"
+            size="small"
+            severity="secondary"
+            @click="showMembers = true"
+          />
+        </div>
+      </template>
+    </Toolbar>
+
+    <!-- Expense feed, grouped by month -->
+    <div class="gd-feed">
+      <p v-if="ledgerLoading" class="gd-muted">Loading…</p>
+      <p v-else-if="expenses.length === 0" class="gd-muted">
         No expenses yet. Add the first one.
       </p>
-      <ul v-else class="flex flex-col gap-2">
-        <li
-          v-for="ex in expenses"
-          :key="ex.id"
-          class="flex items-center justify-between gap-2"
+      <template v-else>
+        <div
+          v-if="hiddenExpenseCount > 0 || showAllExpenses"
+          class="gd-feed-head"
         >
-          <div class="min-w-0 flex-1">
-            <p class="truncate" style="color: var(--color-typo-heading)">
-              {{ ex.name }}
-              <span
-                v-if="ex.split_type === 'settlement'"
-                class="text-xs opacity-60 font-normal"
-              >· settlement</span>
-            </p>
-            <p class="text-xs opacity-70">
-              {{ ex.expense_date?.slice(0, 10) }} · paid by {{ nameForUser(ex.paid_by) }}
-              <span
-                v-if="ex.payment_mode"
-                class="inline-block ml-1 px-2 py-0.5 rounded-full align-baseline"
-                style="background: var(--color-surface-card-2); color: var(--color-typo-body)"
-              >
-                {{ paymentModeLabel(ex.payment_mode) }}
-              </span>
-            </p>
-            <p v-if="ex.notes" class="text-xs opacity-60 truncate">
-              {{ ex.notes }}
-            </p>
+          <label class="gd-all-expenses" for="show-all-expenses">
+            <ToggleSwitch
+              v-model="showAllExpenses"
+              input-id="show-all-expenses"
+              aria-label="Show all expenses"
+            />
+            <span class="text-xs">All expenses</span>
+          </label>
+        </div>
+        <p v-if="visibleExpenses.length === 0" class="gd-muted">
+          Nothing shared with you yet. Turn on <strong>All expenses</strong> to see the rest of
+          the group's ledger.
+        </p>
+        <section v-for="bucket in groupedExpenses" :key="bucket.key" class="gd-month">
+          <p class="gd-month-label">{{ bucket.label }}</p>
+          <div class="gd-month-rows">
+            <!-- Any viewer of this pane is a group member (the read rules only
+                 expose a group to its members), so every row is editable. -->
+            <SplitExpenseRow
+              v-for="ex in bucket.items"
+              :key="ex.id"
+              :expense="ex"
+              :shares="sharesFor(ex.id)"
+              :members="members"
+              :current-user-id="currentUserId"
+              :can-edit="true"
+              :can-delete="true"
+              @edit="openEditExpense"
+              @delete="confirmDeleteExpense"
+              @preview="openReceiptPreview"
+            />
           </div>
-          <span class="text-sm font-medium tabular-nums whitespace-nowrap">
-            {{ formatCents(ex.amount, ex.currency) }}
-          </span>
-          <Button
-            v-if="ex.receipt"
-            icon="pi pi-paperclip"
-            size="small"
-            severity="secondary"
-            text
-            rounded
-            aria-label="View receipt"
-            @click.stop="openReceiptPreview(ex)"
-          />
-          <Button
-            v-if="canEditExpense(ex)"
-            icon="pi pi-pencil"
-            size="small"
-            severity="secondary"
-            text
-            rounded
-            aria-label="Edit expense"
-            @click="openEditExpense(ex)"
-          />
-          <Button
-            v-if="canDeleteExpense(ex)"
-            icon="pi pi-trash"
-            size="small"
-            severity="danger"
-            text
-            rounded
-            aria-label="Delete expense"
-            @click="confirmDeleteExpense(ex)"
-          />
-        </li>
-      </ul>
+        </section>
+      </template>
     </div>
 
-    <!-- Join code -->
-    <div class="flex items-center gap-2">
-      <div class="min-w-0 flex-1">
-        <p class="text-xs opacity-70">Join code</p>
-        <p class="font-mono truncate">{{ group.public_id }}</p>
-      </div>
-      <Button label="Copy" icon="pi pi-copy" size="small" severity="secondary" @click="copyCode" />
-    </div>
-
-    <!-- Members -->
-    <div>
-      <p class="text-sm font-medium mb-2">Members</p>
-      <div v-if="membersLoading" class="text-sm opacity-70">Loading…</div>
-      <ul v-else class="flex flex-col gap-2">
-        <li v-for="m in members" :key="m.id" class="flex items-center gap-2">
-          <iconify-icon icon="mdi:account-circle" width="22" height="22" aria-hidden="true"></iconify-icon>
-          <span class="truncate">{{ memberLabel(m) }}</span>
-          <span v-if="m.user === group.created_by" class="text-xs opacity-60">· owner</span>
-        </li>
-      </ul>
-    </div>
-
-    <!-- Frequent members (owner only) — one tap instead of typing an email -->
-    <div v-if="isOwner && (suggestionsLoading || suggested.length > 0)">
-      <p class="text-sm font-medium mb-2">Frequent</p>
-      <div v-if="suggestionsLoading" class="text-sm opacity-70">Loading…</div>
-      <div v-else class="flex flex-wrap gap-2">
-        <Button
-          v-for="c in suggested"
-          :key="c.user"
-          :label="c.name || c.email"
-          icon="pi pi-user-plus"
-          size="small"
+    <!-- Members / join code / add people (modal, opened from Add members) -->
+    <BaseMobileDialog
+      v-model:visible="showMembers"
+      title="Members"
+      :is-dirty="inviteEmail.trim() !== ''"
+      :is-saving="false"
+    >
+      <div v-if="!membersLoading" class="flex items-center gap-2">
+        <Tag
+          :value="`${members.length} member${members.length === 1 ? '' : 's'}`"
           severity="secondary"
-          outlined
-          rounded
-          :loading="addingUserId === c.user"
-          :disabled="!!addingUserId && addingUserId !== c.user"
-          @click="addSuggested(c)"
         />
       </div>
-    </div>
 
-    <!-- Add member by email (owner only) -->
-    <div v-if="isOwner" class="flex items-end gap-2">
-      <div class="flex flex-col gap-1 flex-1">
-        <label class="text-sm font-medium" for="invite-email">Add by email</label>
-        <InputText id="invite-email" v-model="inviteEmail" placeholder="name@example.com" type="email" />
+      <div v-if="membersLoading" class="gd-muted">Loading…</div>
+      <ul v-else class="gd-member-list">
+        <li v-for="m in members" :key="m.id" class="gd-member">
+          <Avatar :label="memberLabel(m).slice(0, 1).toUpperCase()" shape="circle" size="small" />
+          <span class="gd-member-name">{{ memberLabel(m) }}</span>
+          <Tag v-if="m.user === group.created_by" value="Owner" severity="secondary" />
+        </li>
+      </ul>
+
+      <div class="gd-join">
+        <label class="text-sm font-medium">Join code</label>
+        <InputGroup>
+          <InputText :model-value="group.public_id" readonly />
+          <Button label="Copy" icon="pi pi-copy" severity="secondary" @click="copyCode" />
+        </InputGroup>
       </div>
-      <Button
-        label="Add"
-        icon="pi pi-user-plus"
-        :loading="isAddingMember"
-        :disabled="!inviteEmail.trim()"
-        @click="submitAddMember"
-      />
-    </div>
 
-    <!-- Danger actions -->
-    <div class="flex justify-end pt-2">
-      <Button
-        v-if="isOwner"
-        label="Delete group"
-        icon="pi pi-trash"
-        severity="danger"
-        outlined
-        size="small"
-        @click="confirmDelete"
-      />
-      <Button
-        v-else
-        label="Leave group"
-        icon="pi pi-sign-out"
-        severity="danger"
-        outlined
-        size="small"
-        @click="confirmLeave"
-      />
-    </div>
+      <template v-if="isOwner">
+        <div v-if="suggestionsLoading || suggested.length > 0" class="gd-frequent">
+          <p class="text-sm font-medium">Frequent</p>
+          <div v-if="suggestionsLoading" class="gd-muted">Loading…</div>
+          <div v-else class="flex flex-wrap gap-2">
+            <Button
+              v-for="c in suggested"
+              :key="c.user"
+              :label="c.name || c.email"
+              icon="pi pi-user-plus"
+              size="small"
+              severity="secondary"
+              outlined
+              rounded
+              :loading="addingUserId === c.user"
+              :disabled="!!addingUserId && addingUserId !== c.user"
+              @click="addSuggested(c)"
+            />
+          </div>
+        </div>
+
+        <form class="gd-add-member" @submit.prevent="submitAddMember">
+          <div class="gd-add-field">
+            <label class="text-sm font-medium" for="invite-email">Add by email</label>
+            <InputText
+              id="invite-email"
+              v-model="inviteEmail"
+              placeholder="name@example.com"
+              type="email"
+            />
+          </div>
+          <Button
+            type="submit"
+            label="Add"
+            icon="pi pi-user-plus"
+            :loading="isAddingMember"
+            :disabled="!inviteEmail.trim()"
+          />
+        </form>
+      </template>
+
+      <template #actions>
+        <Button label="Done" fluid @click="closeMembers" />
+      </template>
+    </BaseMobileDialog>
 
     <!-- Add / edit expense dialog -->
     <ManageSplitExpense
@@ -698,13 +868,216 @@ async function doDelete(): Promise<void> {
 
     <!-- Settle up dialog -->
     <SettleUpDialog
-      v-if="settleBalance"
       v-model:visible="showSettle"
       :group="group"
       :members="members"
-      :balance="settleBalance"
+      :balances="balances"
       :current-user-id="currentUserId"
       @saved="onSettleSaved"
     />
   </div>
 </template>
+
+<style scoped>
+.gd {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+.gd-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.gd-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-typo-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.gd-spacer {
+  flex: 1;
+}
+.gd-avatars {
+  display: none;
+}
+@media (min-width: 640px) {
+  .gd-avatars {
+    display: inline-flex;
+  }
+}
+.gd-avatars :deep(.p-avatar) {
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 0.75rem;
+}
+.gd-net {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.gd-net-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.gd-net-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+.gd-net-line {
+  font-weight: 600;
+}
+.gd-balances {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.gd-balance {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.gd-balance-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-typo-body);
+}
+.gd-balance-amount {
+  font-weight: 500;
+}
+.gd-muted {
+  font-size: 0.85rem;
+  color: var(--color-typo-muted);
+}
+.gd-toolbar {
+  padding: 0.35rem 0.5rem;
+}
+/* The toolbar has no end slot anymore, so let the actions fill the card;
+ * otherwise PrimeVue's start slot shrink-wraps the grid and leaves a blank
+ * column on wider phones. */
+.gd-toolbar :deep(.p-toolbar-start) {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.gd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.gd-simplify {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-typo-body);
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+.gd-simplify :deep(.p-toggleswitch) {
+  transform: scale(0.9);
+}
+.gd-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.gd-feed-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -0.35rem;
+}
+.gd-all-expenses {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-typo-body);
+  cursor: pointer;
+}
+.gd-month-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-typo-muted);
+  margin: 0 0 0.4rem;
+}
+.gd-month-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.gd-member-list {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.gd-member {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+}
+.gd-member-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gd-join,
+.gd-frequent,
+.gd-add-member {
+  margin-top: 0.75rem;
+}
+.gd-join {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.gd-add-member {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+.gd-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 639px) {
+  /* Add expense gets its own row; the two secondary actions share the next. */
+  .gd-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    width: 100%;
+  }
+  .gd-actions > :first-child {
+    grid-column: 1 / -1;
+  }
+  .gd-actions :deep(.p-button) {
+    width: 100%;
+  }
+}
+</style>
