@@ -40,8 +40,8 @@ const myShare = computed(
   () => props.shares.find((s) => s.user === props.currentUserId) ?? null,
 )
 
-// "Only me" is an expense whose split list is exactly one participant. Show it
-// to everyone (the other members need to know why they are not involved).
+// An expense whose split list is exactly one participant. The tag explains the
+// row to its owner; unrelated solo rows are hidden upstream by default.
 const soloShare = computed(() => (props.shares.length === 1 ? props.shares[0] : null))
 const settlementPayee = computed(() => {
   if (soloShare.value) return nameForUser(soloShare.value.user)

@@ -66,10 +66,37 @@ const editingExpense = ref<SplitExpense | null>(null)
 const manageToken = ref('')
 const showSettle = ref(false)
 const simplifyOn = ref(props.group.simplify_debts)
+watch(
+  () => props.group.simplify_debts,
+  (value) => {
+    simplifyOn.value = value
+  },
+)
 const isSavingSimplify = ref(false)
 const isExporting = ref(false)
 const isExportingCsv = ref(false)
 const showMembers = ref(false)
+// A discarded invite draft should not come back the next time the modal opens.
+watch(showMembers, (open) => {
+  if (!open) inviteEmail.value = ''
+})
+
+function closeMembers(): void {
+  if (!inviteEmail.value.trim()) {
+    showMembers.value = false
+    return
+  }
+  confirm.require({
+    header: 'Discard invite?',
+    message: 'The email you typed will be discarded.',
+    rejectProps: { label: 'Keep editing', severity: 'secondary', outlined: true },
+    acceptProps: { label: 'Discard', severity: 'danger' },
+    accept: () => {
+      inviteEmail.value = ''
+      showMembers.value = false
+    },
+  })
+}
 
 // Receipt preview mirrors the Expenses tab: token required for protected files.
 const isMobile = useIsMobile(767)
@@ -143,7 +170,6 @@ const netByCurrency = computed(() => {
 // who is not the current user AND someone else paid. Anything the viewer paid
 // or shares in affects their balance and must stay on their board.
 function isSoloOther(ex: SplitExpense): boolean {
-  if (ex.split_type === 'settlement') return false
   const exShares = sharesFor(ex.id)
   return (
     exShares.length === 1 &&
@@ -410,8 +436,14 @@ async function openReceiptPreview(ex: SplitExpense): Promise<void> {
   showPreview.value = true
 }
 
-async function onExpenseSaved(): Promise<void> {
+async function onExpenseSaved(expenseId?: string): Promise<void> {
   await loadLedger()
+  if (!expenseId) return
+  const saved = expenses.value.find((ex) => ex.id === expenseId)
+  if (saved && isSoloOther(saved)) {
+    showAllExpenses.value = true
+    toast.info('This expense involves other members — showing all expenses.')
+  }
 }
 
 function openSettle(): void {
@@ -548,7 +580,7 @@ async function doDeleteGroup(): Promise<void> {
       <h3 class="gd-title">{{ group.name }}</h3>
       <Tag v-if="isOwner" value="Owner" severity="secondary" class="hidden sm:inline-flex" />
       <span class="gd-spacer" />
-      <AvatarGroup v-if="!isMobile && members.length" class="gd-avatars">
+      <AvatarGroup v-if="members.length" class="gd-avatars">
         <Avatar
           v-for="m in shownAvatars"
           :key="m.id"
@@ -649,9 +681,8 @@ async function doDeleteGroup(): Promise<void> {
             @click="openSettle"
           />
           <Button
-            v-if="isOwner"
-            label="Add members"
-            icon="pi pi-user-plus"
+            :label="isOwner ? 'Add members' : 'Members'"
+            :icon="isOwner ? 'pi pi-user-plus' : 'pi pi-users'"
             size="small"
             severity="secondary"
             @click="showMembers = true"
@@ -671,10 +702,14 @@ async function doDeleteGroup(): Promise<void> {
           v-if="hiddenExpenseCount > 0 || showAllExpenses"
           class="gd-feed-head"
         >
-          <div class="gd-all-expenses">
-            <ToggleSwitch v-model="showAllExpenses" aria-label="Show all expenses" />
+          <label class="gd-all-expenses" for="show-all-expenses">
+            <ToggleSwitch
+              v-model="showAllExpenses"
+              input-id="show-all-expenses"
+              aria-label="Show all expenses"
+            />
             <span class="text-xs">All expenses</span>
-          </div>
+          </label>
         </div>
         <p v-if="visibleExpenses.length === 0" class="gd-muted">
           Nothing shared with you yet. Turn on <strong>All expenses</strong> to see the rest of
@@ -707,10 +742,10 @@ async function doDeleteGroup(): Promise<void> {
     <BaseMobileDialog
       v-model:visible="showMembers"
       title="Members"
-      :is-dirty="false"
+      :is-dirty="inviteEmail.trim() !== ''"
       :is-saving="false"
     >
-      <div class="flex items-center gap-2">
+      <div v-if="!membersLoading" class="flex items-center gap-2">
         <Tag
           :value="`${members.length} member${members.length === 1 ? '' : 's'}`"
           severity="secondary"
@@ -776,7 +811,7 @@ async function doDeleteGroup(): Promise<void> {
       </template>
 
       <template #actions>
-        <Button label="Done" fluid @click="showMembers = false" />
+        <Button label="Done" fluid @click="closeMembers" />
       </template>
     </BaseMobileDialog>
 
@@ -868,6 +903,14 @@ async function doDeleteGroup(): Promise<void> {
 .gd-spacer {
   flex: 1;
 }
+.gd-avatars {
+  display: none;
+}
+@media (min-width: 640px) {
+  .gd-avatars {
+    display: inline-flex;
+  }
+}
 .gd-avatars :deep(.p-avatar) {
   width: 1.9rem;
   height: 1.9rem;
@@ -956,11 +999,9 @@ async function doDeleteGroup(): Promise<void> {
 .gd-all-expenses {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   color: var(--color-typo-body);
-}
-.gd-all-expenses :deep(.p-toggleswitch) {
-  transform: scale(0.85);
+  cursor: pointer;
 }
 .gd-month-label {
   font-size: 0.72rem;

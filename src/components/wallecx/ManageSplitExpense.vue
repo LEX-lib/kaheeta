@@ -36,7 +36,8 @@ const isSettlement = computed(() => props.expense?.split_type === 'settlement')
 const visible = defineModel('visible', { type: Boolean, default: false, required: true })
 
 const emit = defineEmits<{
-  saved: []
+  /** Emits the saved record id so the parent can keep a filtered view in sync. */
+  saved: [expenseId?: string]
 }>()
 
 const toast = useToast()
@@ -414,14 +415,14 @@ async function onSubmit(): Promise<void> {
     }
     isSaving.value = true
     try {
-      await updateSplitExpense(props.expense!.id, settlementPayload, {
+      const updated = await updateSplitExpense(props.expense!.id, settlementPayload, {
         receipt: pendingFile.value,
         removeReceipt: removeExistingReceipt.value,
       })
       toast.success('Settlement updated.')
       pendingFile.value = null
       removeExistingReceipt.value = false
-      emit('saved')
+      emit('saved', updated.id)
       baseDialogRef.value?.closeWithoutGuard()
     } catch (e: unknown) {
       toast.error('Failed to update settlement. Please try again.')
@@ -484,16 +485,19 @@ async function onSubmit(): Promise<void> {
       receipt: pendingFile.value,
       removeReceipt: removeExistingReceipt.value,
     }
+    let savedId: string | undefined
     if (props.expense) {
-      await updateSplitExpense(props.expense.id, payload, fileOpts)
+      const updated = await updateSplitExpense(props.expense.id, payload, fileOpts)
+      savedId = updated.id
       toast.success('Expense updated.')
     } else {
-      await createSplitExpense(payload, fileOpts)
+      const created = await createSplitExpense(payload, fileOpts)
+      savedId = created.id
       toast.success('Expense added.')
     }
     pendingFile.value = null
     removeExistingReceipt.value = false
-    emit('saved')
+    emit('saved', savedId)
     baseDialogRef.value?.closeWithoutGuard()
   } catch (e: unknown) {
     toast.error(

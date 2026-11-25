@@ -97,6 +97,9 @@ watch(
     if (!list.some((b) => balanceKey(b) === selectedKey.value)) {
       selectedKey.value = list[0] ? balanceKey(list[0]) : ''
     }
+    // The selected balance may have been paid down elsewhere; refresh the
+    // prefilled amount instead of leaving a stale value behind.
+    syncAmount()
   },
   { deep: true },
 )
