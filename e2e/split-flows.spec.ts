@@ -12,7 +12,7 @@ async function rowAction(
   scope: import("@playwright/test").Locator,
   item: "Edit expense" | "Edit settlement" | "Delete",
 ): Promise<void> {
-  await expect(page.locator(".gd-avatars .p-avatar").first()).toBeVisible();
+  await page.locator(".gd-avatars .p-avatar").first().waitFor({ state: "attached" });
   await scope.getByRole("button", { name: "Expense actions" }).click();
   await page.getByRole("menuitem", { name: item }).click();
 }
@@ -444,7 +444,7 @@ test.describe("Split flows", () => {
     await page.getByText("Trip", { exact: true }).first().click();
 
     // e2e_user is a member, not the adder or the owner: both actions show.
-    await expect(page.locator(".gd-avatars .p-avatar").first()).toBeVisible();
+    await page.locator(".gd-avatars .p-avatar").first().waitFor({ state: "attached" });
     await page.getByRole("button", { name: "Expense actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Edit expense" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
@@ -496,7 +496,7 @@ test.describe("Split flows", () => {
     expect(body.shares).toEqual([{ user: "u_bob", amount: 7000 }]);
   });
 
-  test("rows show the payer, 'not included', and the Only you tag (SPL-K-12)", async ({ page }) => {
+  test("rows show the payer, 'not included', and the Only you tag (SPL-K-11)", async ({ page }) => {
     await mockSplitsApi(page, {
       expenses: [
         {
@@ -561,7 +561,7 @@ test.describe("Split flows", () => {
     ).toBeVisible();
   });
 
-  test("someone-else-only expenses are hidden until All expenses is on (SPL-K-13)", async ({ page }) => {
+  test("solo-other expenses and settlements are hidden and restorable (SPL-K-12/K-13)", async ({ page }) => {
     await mockSplitsApi(page, {
       expenses: [
         {
@@ -608,6 +608,17 @@ test.describe("Split flows", () => {
           split_type: "equal",
           expense_date: "2026-10-31",
         },
+        {
+          id: "e_settle_other",
+          group: "g1",
+          paid_by: "u_bob",
+          added_by: "u_bob",
+          name: "Other settlement",
+          amount: 1000,
+          currency: "PHP",
+          split_type: "settlement",
+          expense_date: "2026-10-30",
+        },
       ],
       shares: [
         { id: "s1", expense: "e_shared", user: "e2e_user", amount: 3000 },
@@ -616,6 +627,7 @@ test.describe("Split flows", () => {
         { id: "s4", expense: "e_others_split", user: "u_bob", amount: 4500 },
         { id: "s5", expense: "e_others_split", user: "u_carol", amount: 4500 },
         { id: "s6", expense: "e_solo_other_you_paid", user: "u_carol", amount: 1000 },
+        { id: "s7", expense: "e_settle_other", user: "u_carol", amount: 1000 },
       ],
     });
 
@@ -630,17 +642,52 @@ test.describe("Split flows", () => {
     await expect(row("Others split").getByText(/not included/)).toBeVisible();
     // A solo expense the viewer paid for affects their balance, so it stays.
     await expect(row("Covered for Carol")).toBeVisible();
+    // Settlements between two other members are hidden too.
+    await expect(row("Other settlement")).toHaveCount(0);
 
     // Opt into the full ledger.
     await page.getByRole("switch", { name: "Show all expenses" }).click();
     await expect(row("Carol only")).toBeVisible();
+    await expect(row("Other settlement")).toBeVisible();
     await expect(row("Carol only").getByText("Only Carol", { exact: true })).toBeVisible();
     // The Only tag replaces the redundant "not included" line.
     await expect(row("Carol only").getByText(/not included/)).toHaveCount(0);
   });
 
-  test("non-owners see only the simplified tag, not the Simplify label (SPL-J-7)", async ({ page }) => {
-    await mockSplitsApi(page, { owner: "u_bob", simplifyDebts: true });
+  test("non-owners see the simplified tag and simplified balances (SPL-J-5)", async ({ page }) => {
+    // You paid 50 for Bob; Carol paid 50 for you. Simplified, you net zero.
+    await mockSplitsApi(page, {
+      owner: "u_bob",
+      simplifyDebts: true,
+      expenses: [
+        {
+          id: "e1",
+          group: "g1",
+          paid_by: "e2e_user",
+          added_by: "e2e_user",
+          name: "Lunch",
+          amount: 5000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-01",
+        },
+        {
+          id: "e2",
+          group: "g1",
+          paid_by: "u_carol",
+          added_by: "u_carol",
+          name: "Cab",
+          amount: 5000,
+          currency: "PHP",
+          split_type: "equal",
+          expense_date: "2026-06-02",
+        },
+      ],
+      shares: [
+        { id: "s1", expense: "e1", user: "u_bob", amount: 5000 },
+        { id: "s2", expense: "e2", user: "e2e_user", amount: 5000 },
+      ],
+    });
 
     await page.goto("/wallet");
     await page.getByRole("tab", { name: /groups/i }).click();
@@ -649,5 +696,58 @@ test.describe("Split flows", () => {
     await expect(page.getByText("simplified", { exact: true })).toBeVisible();
     await expect(page.getByText("Simplify", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("switch", { name: "Simplify debts" })).toHaveCount(0);
+
+    const net = page.locator(".gd-net");
+    await expect(net.getByText(/all settled up/i)).toBeVisible();
+    await expect(net.getByText("Bob owes you")).toHaveCount(0);
+    await expect(net.getByText("You owe Carol")).toHaveCount(0);
+  });
+
+  test("non-owners can open Members but cannot add people (SPL-G-9)", async ({ page }) => {
+    await mockSplitsApi(page, { owner: "u_bob" });
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+
+    // Members and the join code are visible to every member.
+    await page.getByRole("button", { name: "Members" }).click();
+    await expect(page.locator(".p-dialog-title", { hasText: "Members" })).toBeVisible();
+    await expect(page.locator(".p-dialog input[readonly]")).toHaveValue("TRIPCODE123456");
+    // But inviting is owner-only.
+    await expect(page.getByText("Add by email")).toHaveCount(0);
+    await expect(page.getByText("Frequent", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Done" }).click();
+
+    // Group-level actions: leave, not delete.
+    await page.getByRole("button", { name: "Group actions" }).click();
+    await expect(page.getByRole("menuitem", { name: "Leave group" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Delete group" })).toHaveCount(0);
+  });
+
+  test("saving a solo-other expense keeps it visible (SPL-K-14)", async ({ page }) => {
+    await mockSplitsApi(page);
+
+    await page.goto("/wallet");
+    await page.getByRole("tab", { name: /groups/i }).click();
+    await page.getByText("Trip", { exact: true }).first().click();
+    await page.getByRole("button", { name: "Add expense" }).click();
+
+    const form = page.locator("#manage-split-expense-form");
+    await page.getByPlaceholder("e.g. Dinner").fill("Carol solo");
+    await form.getByRole("spinbutton").first().fill("10");
+    // Paid by Carol (Selects: currency, paid-by, payment mode).
+    await form.locator(".p-select").nth(1).click();
+    await page.getByRole("option", { name: "Carol" }).click();
+    // Only Carol remains in the split.
+    await form.getByRole("checkbox", { name: "You" }).click();
+    await form.getByRole("checkbox", { name: "Bob" }).click();
+    await page.locator('button[form="manage-split-expense-form"]').click();
+
+    // The default filter would hide it; saving must reveal it instead.
+    await expect(page.getByText(/showing all expenses/i)).toBeVisible();
+    const row = page.locator(".sx-wrap", { hasText: "Carol solo" });
+    await expect(row).toBeVisible();
+    await expect(row.getByText("Only Carol", { exact: true })).toBeVisible();
   });
 });

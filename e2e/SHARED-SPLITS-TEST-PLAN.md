@@ -50,7 +50,7 @@ Run as **A** unless noted.
 | SPL-G-6 | B opens the group | The same members are visible in the header avatar stack (the Add members button is owner-only) | ☐ |
 | SPL-G-7 | A (owner) → **Add by email** → C's email → Add | Toast "Member added."; C appears in the member list | ☐ |
 | SPL-G-8 | A → Add by email → a non-existent email | Toast "Could not add member — they may not have a Kaheeta account." | ☐ |
-| SPL-G-9 | B (non-owner) opens detail | No "Add by email" field; shows **Leave group**, not Delete | ☐ |
+| SPL-G-9 | B (non-owner) opens detail → **Members** | Member list and join code are visible; no Frequent chips or “Add by email”; the group menu shows **Leave group**, not Delete | ☐ |
 
 ---
 
